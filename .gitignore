@@ -1,0 +1,21 @@
+# Planning artifacts live on disk but are never committed - history is
+# implementation only.
+docs/superpowers/
+
+__pycache__/
+*.pyc
+
+build/
+obj_dir/
+*.vcd
+*.fst
+*.jou
+*.log
+.Xil/
+vivado*.str
+# results/raw IS tracked on purpose: these are the measurements behind
+# comparison.md, they take real tool runs to reproduce, and the whole point of
+# the project is comparing them across phases months apart.
+verif/prog/riscv-tests/
+build_vivado/
+verif/formal/riscv-formal/

@@ -1,0 +1,16 @@
+# Normalize to LF in the repo. WSL2 runs the build; CRLF in a shell script or
+# Makefile fails there with a confusing "\r: command not found".
+* text=auto eol=lf
+
+# Vivado/Windows-native files that prefer CRLF
+*.bat  text eol=crlf
+*.tcl  text eol=lf
+
+# Binaries and compiled test programs — never touch
+*.elf  binary
+*.bin  binary
+*.hex  binary
+*.png  binary
+*.pdf  binary
+*.vcd  binary
+*.fst  binary
