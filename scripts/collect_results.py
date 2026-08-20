@@ -10,14 +10,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-ORDER = ["core_sc", "core_p5", "core_ss2", "core_ooo_t", "core_ooo_p", "core_spec"]
+ORDER = ["core_rv32i"]
 LABEL = {
-    "core_sc":    "Phase 1  single-cycle",
-    "core_p5":    "Phase 2  5-stage in-order",
-    "core_ss2":   "Phase 3  2-way superscalar",
-    "core_ooo_t": "Phase 4a Tomasulo",
-    "core_ooo_p": "Phase 4b PRF rename",
-    "core_spec":  "Phase 5  speculative",
+    "core_rv32i": "RV32I single-cycle",
 }
 
 HEADER = """# Core Comparison
@@ -33,13 +28,11 @@ clock, but one clock period must then contain fetch, decode, execute, memory and
 writeback - so it buys its IPC with a slow clock. Real throughput is
 `IPC x Fmax`, which is why both are recorded and why the MIPS column exists.
 
-**Phase 1 measures below 1.00 on purpose.** The datapath is single-cycle but the
-mul/div unit is not: it asserts busy and freezes the PC for 33 cycles. The
-`hello` benchmark issues one `div` and one `rem`, so 2 of its 122 instructions
-(1.6%) account for 68 of its 190 cycles (36%). A pure RV32I program measures
-exactly 1.00. That stalled time is precisely what the Phase 4 out-of-order core
-is built to hide, so this row is the baseline that result will be measured
-against.
+**MIPS is only comparable within one ISA.** It counts instructions, not work.
+An RV32I core scores far higher MIPS than an RV32IM core on the same C source
+purely because it executes far more instructions to compute the same answer -
+libgcc replaces one `div` with dozens of shift-and-subtract steps. Compare wall
+clock on identical source, never MIPS across different instruction sets.
 
 **Cycle-count CSRs cannot be compared against an ISS.** Spike is instruction
 accurate, not cycle accurate, so any test reading mcycle/cycle will legitimately

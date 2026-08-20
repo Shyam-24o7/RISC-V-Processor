@@ -1,0 +1,8 @@
+{
+  "core": "core_rv32i",
+  "benchmark": "hello",
+  "retired": 297,
+  "cycles": 297,
+  "ipc": 1.0,
+  "note": "Exactly 1.000. RV32I has no multiply or divide, so nothing in the datapath can stall and every instruction retires in one cycle."
+}

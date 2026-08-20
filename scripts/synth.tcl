@@ -1,11 +1,11 @@
 # Batch synthesis for Fmax and utilisation. Invoked from WSL through interop:
-#   /mnt/d/Vivado/2022.2/bin/vivado.bat -mode batch -source scripts/synth.tcl -tclargs core_sc
+#   /mnt/d/Vivado/2022.2/bin/vivado.bat -mode batch -source scripts/synth.tcl -tclargs core_rv32i
 #
 # All paths are relative to the repo root, which is also Vivado's working
 # directory, so the space in the repo path never reaches a Make prerequisite.
 
 set core [lindex $argv 0]
-if {$core eq ""} { set core core_sc }
+if {$core eq ""} { set core core_rv32i }
 
 set part xck26-sfvc784-2LV-c
 set outdir build_vivado/$core
@@ -25,9 +25,8 @@ set srcs [list \
   rtl/common/alu.sv \
   rtl/common/regfile.sv \
   rtl/common/decoder.sv \
-  rtl/common/mul_div.sv \
   rtl/common/csr_file.sv \
-  rtl/$core/$core.sv ]
+  rtl/core/$core.sv ]
 
 create_project -in_memory -part $part
 foreach s $srcs { read_verilog -sv $s }
