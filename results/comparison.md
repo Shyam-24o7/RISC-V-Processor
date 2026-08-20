@@ -6,7 +6,7 @@ with the same pinned toolchain, so the rows are directly comparable.
 
 | Core | IPC | Fmax (MHz) | LUT / FF / BRAM / DSP | MIPS |
 |---|---|---|---|---|
-| RV32I single-cycle | 1.000 | 215.2 | 2085 / 1438 / 0 / 0 | 215.2 |
+| RV32I single-cycle | 1.000 | 215.5 | 2094 / 1438 / 0 / 0 | 215.5 |
 
 **IPC alone is misleading.** A single-cycle datapath retires one instruction per
 clock, but one clock period must then contain fetch, decode, execute, memory and

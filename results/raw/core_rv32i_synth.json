@@ -1,10 +1,10 @@
 {
   "core": "core_rv32i",
   "part": "xck26-sfvc784-2LV-c",
-  "fmax_mhz": 215.2,
-  "wns_ns": -0.646,
+  "fmax_mhz": 215.5,
+  "wns_ns": -0.640,
   "target_ns": 4.0,
-  "lut": 2085,
+  "lut": 2094,
   "ff": 1438,
   "dsp": 0,
   "bram": 0
