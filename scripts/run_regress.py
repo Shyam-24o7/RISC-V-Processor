@@ -26,7 +26,7 @@ class TestResult(NamedTuple):
     detail: str
 
 
-SUITES = ("rv32ui", "rv32um", "rv32mi")
+SUITES = ("rv32ui", "rv32mi")   # no rv32um: this core is RV32I, it has no M extension
 ENTRY_PC = "0x80000000"
 
 # Tests this core is not expected to pass, each with the reason established by
@@ -100,7 +100,7 @@ def run_one(elf: Path, build: Path, sim: Path, compare: Path) -> TestResult:
     # --pmpregions flag did here: spike rejected it, wrote nothing, and every
     # trace comparison afterwards ran against hours-old logs.
     spkf.unlink(missing_ok=True)
-    sp = subprocess.run(["spike", "--isa=rv32im_zicsr", "--priv=m", "-l", "--log-commits",
+    sp = subprocess.run(["spike", "--isa=rv32i_zicsr", "--priv=m", "-l", "--log-commits",
                          f"--log={spkf}", str(elf)],
                         capture_output=True, text=True)
     if not spkf.exists() or spkf.stat().st_size == 0:
