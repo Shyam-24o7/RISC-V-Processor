@@ -64,7 +64,7 @@ tools-check:
 	  fi; \
 	  echo "  OK spike commit logging enabled"'
 
-VFLAGS := --binary --timing -Wall -Wno-fatal -Irtl/common -Irtl/mem -Irtl/core_sc
+VFLAGS := --binary --timing -Wall -Wno-fatal -Irtl/common -Irtl/mem -Irtl/core
 
 # rv32_pkg.sv MUST come first: every module imports it, and a package has to be
 # analysed before its first use. A plain alphabetical glob puts it last (after
@@ -73,7 +73,7 @@ VFLAGS := --binary --timing -Wall -Wno-fatal -Irtl/common -Irtl/mem -Irtl/core_s
 RTL_SRCS := rtl/common/rv32_pkg.sv \
             $(filter-out rtl/common/rv32_pkg.sv, \
               $(wildcard rtl/common/*.sv) $(wildcard rtl/mem/*.sv) \
-              $(wildcard rtl/core_sc/*.sv))
+              $(wildcard rtl/core/*.sv))
 
 .PHONY: tb
 # Usage: make tb TB=tb_alu
