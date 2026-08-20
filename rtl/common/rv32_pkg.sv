@@ -74,6 +74,15 @@ package rv32_pkg;
   parameter logic [11:0] CSR_MCOUNTINHIBIT = 12'h320;
   parameter logic [11:0] CSR_MCYCLEH   = 12'hB80;
   parameter logic [11:0] CSR_MINSTRETH = 12'hB82;
+  // Unprivileged counters (Zicntr). Read-only shadows of the machine counters;
+  // there is no separate timer, so time mirrors cycle.
+  parameter logic [11:0] CSR_CYCLE    = 12'hC00;
+  parameter logic [11:0] CSR_TIME     = 12'hC01;
+  parameter logic [11:0] CSR_INSTRET  = 12'hC02;
+  parameter logic [11:0] CSR_CYCLEH   = 12'hC80;
+  parameter logic [11:0] CSR_TIMEH    = 12'hC81;
+  parameter logic [11:0] CSR_INSTRETH = 12'hC82;
+
   parameter logic [11:0] CSR_MVENDORID= 12'hF11;
   parameter logic [11:0] CSR_MARCHID  = 12'hF12;
   parameter logic [11:0] CSR_MIMPID   = 12'hF13;

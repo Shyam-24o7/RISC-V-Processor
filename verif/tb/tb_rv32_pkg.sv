@@ -126,6 +126,12 @@ module tb_rv32_pkg;
     chk("ALU_AND",     ALU_AND,     4'd9);
     chk("ALU_PASS_B",  ALU_PASS_B,  4'd10);
 
+    chk("CSR_CYCLE",     CSR_CYCLE,     12'hC00);
+    chk("CSR_TIME",      CSR_TIME,      12'hC01);
+    chk("CSR_INSTRET",   CSR_INSTRET,   12'hC02);
+    chk("CSR_CYCLEH",    CSR_CYCLEH,    12'hC80);
+    chk("CSR_TIMEH",     CSR_TIMEH,     12'hC81);
+    chk("CSR_INSTRETH",  CSR_INSTRETH,  12'hC82);
     chk("CSR_MCOUNTINHIBIT", CSR_MCOUNTINHIBIT, 12'h320);
     chk("CSR_MCYCLEH",   CSR_MCYCLEH,   12'hB80);
     chk("CSR_MINSTRETH", CSR_MINSTRETH, 12'hB82);

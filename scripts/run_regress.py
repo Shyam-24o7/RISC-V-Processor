@@ -39,16 +39,11 @@ KNOWN_GAPS = {
         "test requires hardware support",
     "rv32mi-p-breakpoint":
         "no debug trigger module: tselect (0x7a0) and tdata* are unimplemented",
-    "rv32mi-p-zicntr":
-        "unprivileged counters cycle/time/instret (0xc00-0xc02) unimplemented",
     "rv32mi-p-pmpaddr":
         "zero PMP entries implemented, so enforcement cannot be tested",
     "rv32mi-p-mcsr":
         "passes its own tohost gate; trace differs only on marchid, an "
         "implementation-defined identity register (ours 0, Spike 5)",
-    "rv32mi-p-instret_overflow":
-        "mcountinhibit is implemented but this still fails at sub-test 3; root "
-        "cause NOT yet established - do not treat this entry as understood",
 }
 
 

@@ -46,6 +46,15 @@ module csr_file
   // Only CY (bit 0) and IR (bit 2) are defined in mcountinhibit.
   localparam logic [31:0] MCOUNTINHIBIT_MASK = 32'h0000_0005;
 
+  // A CSR write to a counter takes precedence over that instruction's own
+  // increment - and it must suppress the increment across the WHOLE 64-bit
+  // counter, not just the half being written. Incrementing all 64 bits and then
+  // overwriting one half lets a carry out of the low half corrupt the value:
+  // writing 0xFFFFFFFF to minstreth while the low half is 0xFFFFFFFF wraps the
+  // low half to zero, so the counter ends up 0xFFFFFFFF_00000000 rather than
+  // all ones, and the overflow that riscv-tests checks for never happens.
+  logic wr_mcycle, wr_minstret;
+
   logic exists, writable;
   always_comb begin
     exists   = 1'b1;
@@ -57,8 +66,10 @@ module csr_file
       CSR_MCOUNTINHIBIT: begin
         exists = 1'b1; writable = 1'b1;
       end
-      CSR_MVENDORID, CSR_MARCHID, CSR_MIMPID, CSR_MHARTID: begin
-        exists = 1'b1; writable = 1'b0;    // read-only identity registers
+      CSR_MVENDORID, CSR_MARCHID, CSR_MIMPID, CSR_MHARTID,
+      CSR_CYCLE, CSR_TIME, CSR_INSTRET,
+      CSR_CYCLEH, CSR_TIMEH, CSR_INSTRETH: begin
+        exists = 1'b1; writable = 1'b0;    // read-only: identity and Zicntr
       end
       default: begin
         // PMP: zero entries implemented, so these are accessible and hardwired
@@ -76,6 +87,12 @@ module csr_file
 
   assign illegal_o = !exists || (we_i && !writable);
 
+  // Mirrors the guard on the write branch below: trap and mret take priority.
+  assign wr_mcycle   = we_i && writable && !trap_i && !mret_i &&
+                       ((addr_i == CSR_MCYCLE)   || (addr_i == CSR_MCYCLEH));
+  assign wr_minstret = we_i && writable && !trap_i && !mret_i &&
+                       ((addr_i == CSR_MINSTRET) || (addr_i == CSR_MINSTRETH));
+
   always_comb begin
     unique case (addr_i)
       CSR_MSTATUS:       rdata_o = {mstatus_q[31:13], MPP_M, mstatus_q[10:0]};
@@ -91,6 +108,12 @@ module csr_file
       CSR_MCYCLE:        rdata_o = mcycle_q[31:0];
       CSR_MINSTRET:      rdata_o = minstret_q[31:0];
       CSR_MCYCLEH:       rdata_o = mcycle_q[63:32];
+      // Zicntr: unprivileged read-only views of the same counters. There is no
+      // separate timer on this core, so time shadows cycle.
+      CSR_CYCLE, CSR_TIME:   rdata_o = mcycle_q[31:0];
+      CSR_CYCLEH, CSR_TIMEH: rdata_o = mcycle_q[63:32];
+      CSR_INSTRET:           rdata_o = minstret_q[31:0];
+      CSR_INSTRETH:          rdata_o = minstret_q[63:32];
       CSR_MINSTRETH:     rdata_o = minstret_q[63:32];
       default:           rdata_o = 32'd0;
     endcase
@@ -102,8 +125,9 @@ module csr_file
       mtval_q    <= '0; mscratch_q <= '0; mie_q   <= '0; mip_q    <= '0;
       mcycle_q   <= '0; minstret_q <= '0; mcountinhibit_q <= '0;
     end else begin
-      if (!mcountinhibit_q[0]) mcycle_q <= mcycle_q + 64'd1;
-      if (insn_retired_i && !mcountinhibit_q[2]) minstret_q <= minstret_q + 64'd1;
+      if (!mcountinhibit_q[0] && !wr_mcycle) mcycle_q <= mcycle_q + 64'd1;
+      if (insn_retired_i && !mcountinhibit_q[2] && !wr_minstret)
+        minstret_q <= minstret_q + 64'd1;
 
       // Trap entry outranks a CSR write in the same cycle. That ordering is
       // load-bearing: it lets the core drive we_i as pure write INTENT, which
