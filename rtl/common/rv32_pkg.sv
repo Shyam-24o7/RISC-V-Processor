@@ -97,4 +97,29 @@ package rv32_pkg;
   parameter logic [31:0] EXC_STORE_MISALIGNED= 32'd6;
   parameter logic [31:0] EXC_ECALL_M         = 32'd11;
 
+  // Control bundle produced by the decoder and consumed by the datapath.
+  // This is a microarchitecture interface, not an ISA definition - it exists
+  // so the decoder has exactly one output rather than twenty loose signals.
+  typedef struct packed {
+    logic [4:0]  rs1_addr;
+    logic [4:0]  rs2_addr;
+    logic [4:0]  rd_addr;
+    logic        rd_we;
+    logic [31:0] imm;
+    alu_op_e     alu_op;
+    logic        alu_a_pc;     // operand A is the PC (AUIPC)
+    logic        alu_b_imm;    // operand B is the immediate
+    logic        is_branch;
+    logic        is_jal;
+    logic        is_jalr;
+    logic        is_load;
+    logic        is_store;
+    logic        is_csr;
+    logic        is_ecall;
+    logic        is_ebreak;
+    logic        is_mret;
+    logic        illegal;
+    logic [2:0]  funct3;
+  } decoded_t;
+
 endpackage
