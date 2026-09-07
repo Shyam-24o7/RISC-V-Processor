@@ -21,6 +21,14 @@
 module latency_mem #(
   parameter int    WORDS    = 65536,
   parameter int    LATENCY  = 1,      // WAIT STATES: ready after N idle cycles
+  // 0: the instruction port serves one request at a time, holding ready low
+  //    until the access completes. A core must wait for each instruction.
+  // 1: requests may be issued every cycle and responses come back in order
+  //    LATENCY cycles later. This is what a real instruction cache does, and
+  //    it is the thing a prefetching front end can exploit while a
+  //    single-cycle core structurally cannot - it has nowhere to put an
+  //    instruction it is not ready to execute.
+  parameter bit    PIPELINED_FETCH = 1'b0,
   parameter string INIT_HEX = ""
 ) (
   input  logic        clk_i,
@@ -60,22 +68,50 @@ module latency_mem #(
   // back-to-back request pays the full cost again, which is what an
   // uncached memory does.
   generate
-    if (LATENCY == 0) begin : g_zero_latency
+    // ---- Instruction port, pipelined ----
+    if (PIPELINED_FETCH && (LATENCY > 0)) begin : g_pipe_fetch
+      // A shift register of in-flight responses. One request may be issued per
+      // cycle; each surfaces LATENCY cycles later, in order.
+      logic        vpipe [LATENCY];
+      logic [31:0] dpipe [LATENCY];
+      always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
+          for (int k = 0; k < LATENCY; k++) begin
+            vpipe[k] <= 1'b0;
+            dpipe[k] <= '0;
+          end
+        end else begin
+          vpipe[0] <= instr_req_i;
+          dpipe[0] <= mem[iword];
+          for (int k = 1; k < LATENCY; k++) begin
+            vpipe[k] <= vpipe[k-1];
+            dpipe[k] <= dpipe[k-1];
+          end
+        end
+      end
+      assign instr_ready_o = vpipe[LATENCY-1];
+      assign instr_rdata_o = dpipe[LATENCY-1];
+    end else if (LATENCY == 0) begin : g_zero_fetch
       assign instr_ready_o = 1'b1;
+      assign instr_rdata_o = mem[iword];
+    end else begin : g_blocking_fetch
+      localparam int ICW = $clog2(LATENCY + 2);
+      logic [ICW-1:0] icnt2_q;
+      always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni)                              icnt2_q <= '0;
+        else if (instr_req_i && !instr_ready_o)   icnt2_q <= icnt2_q + 1'b1;
+        else                                      icnt2_q <= '0;
+      end
+      assign instr_ready_o = instr_req_i && (icnt2_q == ICW'(LATENCY));
+      assign instr_rdata_o = mem[iword];
+    end
+
+    // ---- Data port, always blocking ----
+    if (LATENCY == 0) begin : g_zero_latency
       assign data_ready_o  = 1'b1;
     end else begin : g_counted_latency
       localparam int CW = $clog2(LATENCY + 2);
-      logic [CW-1:0] icnt_q, dcnt_q;
-
-      always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
-          icnt_q <= '0;
-        end else if (instr_req_i && !instr_ready_o) begin
-          icnt_q <= icnt_q + 1'b1;
-        end else begin
-          icnt_q <= '0;                       // handshake done, or no request
-        end
-      end
+      logic [CW-1:0] dcnt_q;
 
       always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
@@ -87,7 +123,6 @@ module latency_mem #(
         end
       end
 
-      assign instr_ready_o = instr_req_i && (icnt_q == CW'(LATENCY));
       assign data_ready_o  = data_req_i  && (dcnt_q == CW'(LATENCY));
     end
   endgenerate
@@ -104,7 +139,6 @@ module latency_mem #(
     end
   end
 
-  assign instr_rdata_o = mem[iword];
   assign data_rdata_o  = mem[dword];
 
 endmodule
