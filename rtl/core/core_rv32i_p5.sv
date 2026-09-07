@@ -66,12 +66,6 @@ module core_rv32i_p5
     logic        valid;
     logic [31:0] pc;
     logic [31:0] insn;
-  } if_id_t;
-
-  typedef struct packed {
-    logic        valid;
-    logic [31:0] pc;
-    logic [31:0] insn;
     decoded_t    dec;
     logic [31:0] rs1_data;
     logic [31:0] rs2_data;
@@ -103,7 +97,6 @@ module core_rv32i_p5
     logic        trap;
   } mem_wb_t;
 
-  if_id_t  if_id_q;
   id_ex_t  id_ex_q;
   ex_mem_t ex_mem_q;
   mem_wb_t mem_wb_q;
@@ -111,64 +104,41 @@ module core_rv32i_p5
   // Control signals driven from later stages, declared up front because
   // SystemVerilog requires a declaration before any reference.
   logic        stall_ld_use;
-  logic        stall_if;      // instruction fetch outstanding
   logic        stall_mem;     // data access outstanding
-  logic        stall_front;   // anything that freezes IF/ID and ID/EX
   logic        flush_branch;
   logic        flush_trap;
   logic [31:0] redirect_pc;
   logic        redirect_valid;
 
   // ======================================================================
-  // IF - instruction fetch
+  // IF - decoupled instruction fetch
   // ======================================================================
-  logic [31:0] pc_q, pc_n;
-  assign instr_addr_o = pc_q;
-  assign instr_req_o  = 1'b1;
+  // The fetch unit owns the fetch PC and a prefetch buffer, and its head IS
+  // the IF/ID interface. When the buffer is empty if_valid simply goes low and
+  // a bubble flows down the pipe, instead of a fetch stall freezing the entire
+  // core the way a direct memory read did. That is what lets fetch latency
+  // overlap with work already in flight.
+  logic        if_valid;
+  logic [31:0] if_pc, if_insn;
+  logic        if_pop;
 
-  // A pipelined core absorbs memory latency far better than a single-cycle one:
-  // fetch and data access happen in DIFFERENT stages, so their latencies
-  // overlap with other instructions' work instead of adding together within
-  // one instruction.
-  assign stall_if    = !instr_ready_i;
-  assign stall_front = stall_if || stall_ld_use || stall_mem;
+  fetch_unit #(.DEPTH(4), .BOOT_ADDR(BOOT_ADDR)) u_fetch (
+    .clk_i(clk_i), .rst_ni(rst_ni),
+    .redirect_i(redirect_valid), .redirect_pc_i(redirect_pc),
+    .instr_req_o(instr_req_o), .instr_addr_o(instr_addr_o),
+    .instr_rdata_i(instr_rdata_i), .instr_ready_i(instr_ready_i),
+    .insn_valid_o(if_valid), .insn_pc_o(if_pc), .insn_o(if_insn),
+    .insn_ready_i(if_pop)
+  );
 
-  always_comb begin
-    // A data-access stall outranks a redirect: the older instruction in MEM has
-    // not finished, so the younger one in EX has not really resolved yet.
-    if      (stall_mem)      pc_n = pc_q;
-    else if (redirect_valid) pc_n = redirect_pc;   // trap, mret, branch, jump
-    else if (stall_if)       pc_n = pc_q;          // waiting on the fetch
-    else if (stall_ld_use)   pc_n = pc_q;          // hold for the interlock
-    else                     pc_n = pc_q + 32'd4;
-  end
-
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) pc_q <= BOOT_ADDR;
-    else         pc_q <= pc_n;
-  end
-
-  // ---- IF/ID ----
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      if_id_q <= '0;
-    end else if (stall_mem) begin
-      if_id_q <= if_id_q;                          // frozen behind MEM
-    end else if (flush_trap || flush_branch) begin
-      if_id_q <= '0;                               // kill the wrongly fetched insn
-    end else if (!stall_ld_use && !stall_if) begin
-      if_id_q.valid <= 1'b1;
-      if_id_q.pc    <= pc_q;
-      if_id_q.insn  <= instr_rdata_i;
-    end
-    // stall with no flush: hold if_id_q unchanged
-  end
+  // Decode consumes the head whenever the front end can advance.
+  assign if_pop = if_valid && !stall_mem && !stall_ld_use;
 
   // ======================================================================
   // ID - decode and register read
   // ======================================================================
   decoded_t dec_id;
-  decoder u_decoder (.insn_i(if_id_q.insn), .dec_o(dec_id));
+  decoder u_decoder (.insn_i(if_insn), .dec_o(dec_id));
 
   logic [31:0] rs1_data_id, rs2_data_id;
   logic [4:0]  wb_rd_addr;
@@ -205,7 +175,7 @@ module core_rv32i_p5
 
   assign stall_ld_use = id_ex_q.valid && id_ex_result_at_mem &&
                         (id_ex_q.dec.rd_addr != 5'd0) &&
-                        if_id_q.valid &&
+                        if_valid &&
                         ((id_ex_q.dec.rd_addr == dec_id.rs1_addr) ||
                          (id_ex_q.dec.rd_addr == dec_id.rs2_addr));
 
@@ -215,12 +185,12 @@ module core_rv32i_p5
       id_ex_q <= '0;
     end else if (stall_mem) begin
       id_ex_q <= id_ex_q;                          // frozen behind MEM
-    end else if (flush_trap || flush_branch || stall_ld_use || stall_if) begin
+    end else if (flush_trap || flush_branch || stall_ld_use) begin
       id_ex_q <= '0;                               // insert a bubble
     end else begin
-      id_ex_q.valid    <= if_id_q.valid;
-      id_ex_q.pc       <= if_id_q.pc;
-      id_ex_q.insn     <= if_id_q.insn;
+      id_ex_q.valid    <= if_valid;
+      id_ex_q.pc       <= if_pc;
+      id_ex_q.insn     <= if_insn;
       id_ex_q.dec      <= dec_id;
       id_ex_q.rs1_data <= rs1_id_fwd;
       id_ex_q.rs2_data <= rs2_id_fwd;

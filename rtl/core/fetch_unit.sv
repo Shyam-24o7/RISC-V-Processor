@@ -15,7 +15,8 @@
 // The core never needs to know the memory latency. Requests are tracked by a
 // queue of in-flight PCs; a response is matched to the oldest one.
 module fetch_unit #(
-  parameter int DEPTH = 4          // in-flight requests plus buffered instructions
+  parameter int          DEPTH     = 4,   // in-flight plus buffered instructions
+  parameter logic [31:0] BOOT_ADDR = 32'h0000_0000
 ) (
   input  logic        clk_i,
   input  logic        rst_ni,
@@ -74,7 +75,7 @@ module fetch_unit #(
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      fetch_pc_q <= '0;
+      fetch_pc_q <= BOOT_ADDR;
       pcq_cnt_q  <= '0;
       ibuf_cnt_q <= '0;
       discard_q  <= '0;

@@ -7,6 +7,7 @@ module tb_core_p5;
   logic [31:0] iaddr, irdata, daddr, dwdata, drdata;
   logic        dwe;
   logic [3:0]  dbe;
+  logic        ireq, iready;
 
   logic        rvfi_valid, rvfi_trap;
   logic [63:0] rvfi_order;
@@ -26,8 +27,8 @@ module tb_core_p5;
 
   core_rv32i_p5 #(.BOOT_ADDR(BOOT)) dut (
     .clk_i(clk), .rst_ni(rst_n),
-    .instr_req_o(), .instr_addr_o(iaddr), .instr_rdata_i(irdata),
-    .instr_ready_i(1'b1),
+    .instr_req_o(ireq), .instr_addr_o(iaddr), .instr_rdata_i(irdata),
+    .instr_ready_i(iready),
     .data_req_o(), .data_addr_o(daddr), .data_we_o(dwe), .data_be_o(dbe),
     .data_wdata_o(dwdata), .data_rdata_i(drdata), .data_ready_i(1'b1),
     .rvfi_valid_o(rvfi_valid), .rvfi_order_o(rvfi_order), .rvfi_insn_o(rvfi_insn),
@@ -36,11 +37,13 @@ module tb_core_p5;
     .rvfi_pc_wdata_o(rvfi_pc_wdata)
   );
 
-  magic_mem #(.WORDS(65536)) mem (
-    .clk_i(clk),
-    .instr_addr_i(iaddr), .instr_rdata_o(irdata),
-    .data_addr_i(daddr), .data_we_i(dwe), .data_be_i(dbe),
-    .data_wdata_i(dwdata), .data_rdata_o(drdata)
+  latency_mem #(.WORDS(65536), .LATENCY(0), .PIPELINED_FETCH(1'b1)) mem (
+    .clk_i(clk), .rst_ni(rst_n),
+    .instr_req_i(ireq), .instr_addr_i(iaddr),
+    .instr_rdata_o(irdata), .instr_ready_o(iready),
+    .data_req_i(1'b1), .data_addr_i(daddr), .data_we_i(dwe),
+    .data_be_i(dbe), .data_wdata_i(dwdata),
+    .data_rdata_o(drdata), .data_ready_o()
   );
 
   initial begin

@@ -42,7 +42,7 @@ module tb_core_p5_lat #(
     .rvfi_pc_wdata_o(rvfi_pc_wdata)
   );
 
-  latency_mem #(.WORDS(65536), .LATENCY(LATENCY)) mem (
+  latency_mem #(.WORDS(65536), .LATENCY(LATENCY), .PIPELINED_FETCH(1'b1)) mem (
     .clk_i(clk), .rst_ni(rst_n),
     .instr_req_i(ireq), .instr_addr_i(iaddr),
     .instr_rdata_o(irdata), .instr_ready_o(iready),

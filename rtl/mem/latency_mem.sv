@@ -69,28 +69,32 @@ module latency_mem #(
   // uncached memory does.
   generate
     // ---- Instruction port, pipelined ----
-    if (PIPELINED_FETCH && (LATENCY > 0)) begin : g_pipe_fetch
+    if (PIPELINED_FETCH) begin : g_pipe_fetch
       // A shift register of in-flight responses. One request may be issued per
       // cycle; each surfaces LATENCY cycles later, in order.
-      logic        vpipe [LATENCY];
-      logic [31:0] dpipe [LATENCY];
+      // At least one stage: a request issued in cycle N is answered in N+1 at
+      // the earliest. A combinational answer would break the pairing between a
+      // response and the oldest in-flight request.
+      localparam int PD = (LATENCY == 0) ? 1 : LATENCY;
+      logic        vpipe [PD];
+      logic [31:0] dpipe [PD];
       always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
-          for (int k = 0; k < LATENCY; k++) begin
+          for (int k = 0; k < PD; k++) begin
             vpipe[k] <= 1'b0;
             dpipe[k] <= '0;
           end
         end else begin
           vpipe[0] <= instr_req_i;
           dpipe[0] <= mem[iword];
-          for (int k = 1; k < LATENCY; k++) begin
+          for (int k = 1; k < PD; k++) begin
             vpipe[k] <= vpipe[k-1];
             dpipe[k] <= dpipe[k-1];
           end
         end
       end
-      assign instr_ready_o = vpipe[LATENCY-1];
-      assign instr_rdata_o = dpipe[LATENCY-1];
+      assign instr_ready_o = vpipe[PD-1];
+      assign instr_rdata_o = dpipe[PD-1];
     end else if (LATENCY == 0) begin : g_zero_fetch
       assign instr_ready_o = 1'b1;
       assign instr_rdata_o = mem[iword];
