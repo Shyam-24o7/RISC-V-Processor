@@ -1,0 +1,33 @@
+{
+  "study": "Does ID-stage branch prediction help a 5-stage RV32I core on FPGA?",
+  "core": "core_rv32i_p5",
+  "benchmark": "hello.c",
+  "part": "xck26-sfvc784-2LV-c",
+  "conclusion": "No. Reverted. It buys 8% IPC and costs 23% Fmax, a 16% net loss in real throughput.",
+  "variants": [
+    {
+      "name": "no prediction (branches resolve in EX)",
+      "cycles": 422, "retired": 296, "ipc": 0.701,
+      "fmax_mhz": 251.3, "lut": 2411, "ff": 2119,
+      "mips": 176.2,
+      "detail": "Every taken branch and every JAL flushes two instructions."
+    },
+    {
+      "name": "predict in ID, target from decoder output",
+      "cycles": 391, "retired": 296, "ipc": 0.757,
+      "fmax_mhz": 194.7, "lut": 2663, "ff": 2146,
+      "mips": 147.4,
+      "detail": "JAL resolved in ID; conditional branches predicted taken when imm[31] is set (backward = loop). Correct predictions cost one bubble instead of two."
+    },
+    {
+      "name": "predict in ID, target from raw instruction bits",
+      "cycles": 391, "retired": 296, "ipc": 0.757,
+      "fmax_mhz": 193.5, "lut": 2667, "ff": 2146,
+      "mips": 146.5,
+      "detail": "Attempt to recover the lost Fmax by keeping the decoder off the fetch path - opcode compare and immediate assembly are pure wiring feeding one adder. It made no difference, which disproved the hypothesis that decode was the critical path."
+    }
+  ],
+  "root_cause": "Not the decoder. Taking it out of the path changed Fmax by 1.2 MHz. The cost is the extra level added to the PC redirect mux, which already sat on the long path running from the EX forwarding muxes through the branch comparator into the next-PC selection. Adding a fourth priority input lengthened the critical path of the whole core.",
+  "what_would_actually_work": "A BTB indexed by PC in the IF stage. That predicts before the instruction is even decoded and hides the target computation behind a pipeline stage, so it adds no combinational depth to the redirect path - at the cost of a tag array and the misprediction machinery to go with it.",
+  "why_this_is_recorded": "IPC alone would have made this look like a clean 8% win, and it would have shipped while making the core 16% slower. The same trap as the M-extension study, from the opposite direction: a metric improving while performance degrades."
+}
