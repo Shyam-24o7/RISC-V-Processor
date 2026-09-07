@@ -1,0 +1,11 @@
+{
+  "core": "core_rv32i_p5",
+  "part": "xck26-sfvc784-2LV-c",
+  "fmax_mhz": 251.3,
+  "wns_ns": 0.021,
+  "target_ns": 4.0,
+  "lut": 2411,
+  "ff": 2119,
+  "dsp": 0,
+  "bram": 0
+}

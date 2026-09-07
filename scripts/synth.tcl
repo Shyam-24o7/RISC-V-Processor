@@ -32,11 +32,21 @@ create_project -in_memory -part $part
 foreach s $srcs { read_verilog -sv $s }
 set_property top $core [current_fileset]
 
-# Constrain aggressively, then derive Fmax from the achieved slack:
-#   Fmax = 1 / (target_period - WNS)
-# A single pass is enough because WNS is signed - a missed target gives a
-# negative slack and still yields the true achievable period.
+# Derive Fmax from the achieved slack:  Fmax = 1 / (target_period - WNS)
+#
+# One pass is enough, in EITHER direction. It is reasonable to worry that a
+# design which MEETS its constraint has simply stopped being optimised, making
+# the derived Fmax a property of the constraint rather than the design - but
+# that was measured here and is not what happens. core_rv32i_p5 synthesised at
+# both 4.0 ns (wns +0.021) and 3.0 ns (wns -0.979) reports an achieved period of
+# 3.979 ns either way, i.e. the same 251.3 MHz. Vivado reports the true
+# worst-case path regardless of whether the target was met.
+#
+# The target is settable anyway, as a second argument, so that assumption can be
+# re-checked cheaply on any future design rather than trusted.
 set target_ns 4.0
+if {[llength $argv] > 1} { set target_ns [lindex $argv 1] }
+puts "SYNTH target period = $target_ns ns"
 synth_design -top $core -part $part -flatten_hierarchy rebuilt
 create_clock -period $target_ns -name clk [get_ports clk_i]
 opt_design

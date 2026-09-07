@@ -1,0 +1,8 @@
+{
+  "core": "core_rv32i_p5",
+  "benchmark": "hello",
+  "retired": 296,
+  "cycles": 422,
+  "ipc": 0.701,
+  "note": "Below 1.000 by design. A pipeline loses cycles to load-use interlocks, CSR-use interlocks and the two-instruction flush on every taken branch. It buys those back with a much shorter critical path, so the comparison that matters is IPC x Fmax, not IPC."
+}
