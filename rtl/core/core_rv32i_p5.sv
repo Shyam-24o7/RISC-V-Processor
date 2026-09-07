@@ -71,8 +71,6 @@ module core_rv32i_p5
     decoded_t    dec;
     logic [31:0] rs1_data;
     logic [31:0] rs2_data;
-    logic        pred_taken;    // what ID predicted for this instruction
-    logic [31:0] pred_target;
   } id_ex_t;
 
   typedef struct packed {
@@ -109,8 +107,7 @@ module core_rv32i_p5
   // Control signals driven from later stages, declared up front because
   // SystemVerilog requires a declaration before any reference.
   logic        stall_ld_use;
-  logic        flush_branch;    // EX said the prediction was wrong
-  logic        flush_id;        // ID redirected the fetch
+  logic        flush_branch;
   logic        flush_trap;
   logic [31:0] redirect_pc;
   logic        redirect_valid;
@@ -136,7 +133,7 @@ module core_rv32i_p5
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       if_id_q <= '0;
-    end else if (flush_trap || flush_branch || flush_id) begin
+    end else if (flush_trap || flush_branch) begin
       if_id_q <= '0;                               // kill the wrongly fetched insn
     end else if (!stall_ld_use) begin
       if_id_q.valid <= 1'b1;
@@ -176,35 +173,6 @@ module core_rv32i_p5
   assign rs1_id_fwd = wb_hits_rs1 ? wb_rd_data : rs1_data_id;
   assign rs2_id_fwd = wb_hits_rs2 ? wb_rd_data : rs2_data_id;
 
-  // ---- Static branch prediction, resolved in ID ----
-  // Every taken control transfer used to cost two flushed instructions,
-  // because nothing was decided until EX. Two of them do not need EX at all:
-  //
-  //   JAL is unconditional and its target is pc+imm, both known here. That is
-  //   not even a prediction, just arithmetic done one stage earlier.
-  //
-  //   A conditional branch with a NEGATIVE offset is almost always a loop
-  //   branch, taken on every iteration but the last. Predicting backward-taken
-  //   is the classic static heuristic and costs one comparator on imm[31].
-  //
-  // Redirecting from ID kills the instruction in IF only, so a correctly
-  // predicted transfer costs one bubble instead of two. A misprediction is
-  // caught in EX and still costs two, which is what it cost before.
-  //
-  // JALR is deliberately NOT predicted: its target depends on a register value
-  // that may still be in flight, so it is resolved in EX as before.
-  logic        id_predict_taken;
-  logic [31:0] id_predict_target;
-
-  assign id_predict_taken  = if_id_q.valid &&
-                             (dec_id.is_jal ||
-                              (dec_id.is_branch && dec_id.imm[31]));
-  assign id_predict_target = if_id_q.pc + dec_id.imm;
-
-  // An older instruction's redirect always wins over this one.
-  assign flush_id = id_predict_taken && !flush_trap && !flush_branch &&
-                    !stall_ld_use;
-
   // ---- MEM-result interlock (load-use, and CSR-use) ----
   // The hazard forwarding cannot fix: a value that does not exist until the end
   // of MEM cannot be routed back into an EX that is happening now. That covers
@@ -231,10 +199,8 @@ module core_rv32i_p5
       id_ex_q.pc       <= if_id_q.pc;
       id_ex_q.insn     <= if_id_q.insn;
       id_ex_q.dec      <= dec_id;
-      id_ex_q.rs1_data    <= rs1_id_fwd;
-      id_ex_q.rs2_data    <= rs2_id_fwd;
-      id_ex_q.pred_taken  <= id_predict_taken;
-      id_ex_q.pred_target <= id_predict_target;
+      id_ex_q.rs1_data <= rs1_id_fwd;
+      id_ex_q.rs2_data <= rs2_id_fwd;
     end
   end
 
@@ -318,13 +284,6 @@ module core_rv32i_p5
   assign branch_target_ex = id_ex_q.dec.is_jalr
                           ? ((fwd_rs1 + id_ex_q.dec.imm) & 32'hFFFF_FFFE)
                           : (id_ex_q.pc + id_ex_q.dec.imm);
-
-  // The prediction was wrong if the direction differs, or if it was taken but
-  // to a different address (which is how an unpredicted JALR shows up here).
-  logic mispredict_ex;
-  assign mispredict_ex = id_ex_q.valid &&
-                         ((take_branch_ex != id_ex_q.pred_taken) ||
-                          (take_branch_ex && (branch_target_ex != id_ex_q.pred_target)));
 
   logic [31:0] pc_next_ex;
   assign pc_next_ex = take_branch_ex ? branch_target_ex : (id_ex_q.pc + 32'd4);
@@ -500,16 +459,14 @@ module core_rv32i_p5
 
   // ---- Redirect and flush control ----
   // Trap outranks mret outranks branch: an older instruction's decision wins.
-  assign flush_trap   = trap_taken || mret_taken;
-  assign flush_branch = mispredict_ex && !flush_trap;
+  assign flush_trap = trap_taken || mret_taken;
+  assign flush_branch = take_branch_ex && !flush_trap;
 
   always_comb begin
     redirect_valid = 1'b1;
     if      (trap_taken)     redirect_pc = mtvec;
     else if (mret_taken)     redirect_pc = mepc;
-    else if (mispredict_ex)  redirect_pc = take_branch_ex ? branch_target_ex
-                                                          : (id_ex_q.pc + 32'd4);
-    else if (flush_id)       redirect_pc = id_predict_target;
+    else if (take_branch_ex) redirect_pc = branch_target_ex;
     else begin
       redirect_pc    = '0;
       redirect_valid = 1'b0;
