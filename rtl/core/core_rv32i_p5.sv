@@ -35,14 +35,18 @@ module core_rv32i_p5
   input  logic        clk_i,
   input  logic        rst_ni,
 
+  output logic        instr_req_o,
   output logic [31:0] instr_addr_o,
   input  logic [31:0] instr_rdata_i,
+  input  logic        instr_ready_i,
 
+  output logic        data_req_o,
   output logic [31:0] data_addr_o,
   output logic        data_we_o,
   output logic [3:0]  data_be_o,
   output logic [31:0] data_wdata_o,
   input  logic [31:0] data_rdata_i,
+  input  logic        data_ready_i,
 
   // RVFI retirement port, emitted at WB so retirement stays in program order.
   output logic        rvfi_valid_o,
@@ -107,6 +111,9 @@ module core_rv32i_p5
   // Control signals driven from later stages, declared up front because
   // SystemVerilog requires a declaration before any reference.
   logic        stall_ld_use;
+  logic        stall_if;      // instruction fetch outstanding
+  logic        stall_mem;     // data access outstanding
+  logic        stall_front;   // anything that freezes IF/ID and ID/EX
   logic        flush_branch;
   logic        flush_trap;
   logic [31:0] redirect_pc;
@@ -117,9 +124,21 @@ module core_rv32i_p5
   // ======================================================================
   logic [31:0] pc_q, pc_n;
   assign instr_addr_o = pc_q;
+  assign instr_req_o  = 1'b1;
+
+  // A pipelined core absorbs memory latency far better than a single-cycle one:
+  // fetch and data access happen in DIFFERENT stages, so their latencies
+  // overlap with other instructions' work instead of adding together within
+  // one instruction.
+  assign stall_if    = !instr_ready_i;
+  assign stall_front = stall_if || stall_ld_use || stall_mem;
 
   always_comb begin
-    if      (redirect_valid) pc_n = redirect_pc;   // trap, mret, branch, jump
+    // A data-access stall outranks a redirect: the older instruction in MEM has
+    // not finished, so the younger one in EX has not really resolved yet.
+    if      (stall_mem)      pc_n = pc_q;
+    else if (redirect_valid) pc_n = redirect_pc;   // trap, mret, branch, jump
+    else if (stall_if)       pc_n = pc_q;          // waiting on the fetch
     else if (stall_ld_use)   pc_n = pc_q;          // hold for the interlock
     else                     pc_n = pc_q + 32'd4;
   end
@@ -133,9 +152,11 @@ module core_rv32i_p5
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       if_id_q <= '0;
+    end else if (stall_mem) begin
+      if_id_q <= if_id_q;                          // frozen behind MEM
     end else if (flush_trap || flush_branch) begin
       if_id_q <= '0;                               // kill the wrongly fetched insn
-    end else if (!stall_ld_use) begin
+    end else if (!stall_ld_use && !stall_if) begin
       if_id_q.valid <= 1'b1;
       if_id_q.pc    <= pc_q;
       if_id_q.insn  <= instr_rdata_i;
@@ -192,7 +213,9 @@ module core_rv32i_p5
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       id_ex_q <= '0;
-    end else if (flush_trap || flush_branch || stall_ld_use) begin
+    end else if (stall_mem) begin
+      id_ex_q <= id_ex_q;                          // frozen behind MEM
+    end else if (flush_trap || flush_branch || stall_ld_use || stall_if) begin
       id_ex_q <= '0;                               // insert a bubble
     end else begin
       id_ex_q.valid    <= if_id_q.valid;
@@ -329,6 +352,8 @@ module core_rv32i_p5
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       ex_mem_q <= '0;
+    end else if (stall_mem) begin
+      ex_mem_q <= ex_mem_q;                        // hold the request steady
     end else if (flush_trap) begin
       ex_mem_q <= '0;
     end else begin
@@ -392,7 +417,7 @@ module core_rv32i_p5
 
   // Pure write INTENT, exactly as in the single-cycle core: gating this with
   // the trap decision would close a combinational loop through csr_illegal.
-  assign csr_we = ex_mem_q.valid && ex_mem_q.dec.is_csr && csr_writes;
+  assign csr_we = ex_mem_q.valid && ex_mem_q.dec.is_csr && csr_writes && !stall_mem;
 
   // ---- The trap point ----
   // Everything older has already retired; everything younger is still in the
@@ -419,6 +444,13 @@ module core_rv32i_p5
   assign mret_taken = ex_mem_q.valid && ex_mem_q.dec.is_mret && !trap_taken;
 
   // A trapping store must never reach memory.
+  logic mem_op;
+  assign mem_op     = ex_mem_q.valid &&
+                      (ex_mem_q.dec.is_load || ex_mem_q.dec.is_store) &&
+                      !ex_mem_q.exc_valid && !trap_taken;
+  assign data_req_o = mem_op;
+  assign stall_mem  = mem_op && !data_ready_i;
+
   assign data_we_o = ex_mem_q.valid && ex_mem_q.dec.is_store &&
                      !ex_mem_q.exc_valid && !trap_taken;
 
@@ -428,8 +460,9 @@ module core_rv32i_p5
     .clk_i(clk_i), .rst_ni(rst_ni),
     .addr_i(ex_mem_q.dec.imm[11:0]), .wdata_i(csr_wdata), .we_i(csr_we),
     .rdata_o(csr_rdata), .illegal_o(csr_illegal),
-    .trap_i(trap_taken), .trap_cause_i(trap_cause), .trap_pc_i(ex_mem_q.pc),
-    .trap_val_i(trap_tval), .mret_i(mret_taken),
+    .trap_i(trap_taken && !stall_mem), .trap_cause_i(trap_cause),
+    .trap_pc_i(ex_mem_q.pc),
+    .trap_val_i(trap_tval), .mret_i(mret_taken && !stall_mem),
     .tvec_o(mtvec), .epc_o(mepc), .insn_retired_i(wb_valid)
   );
 
@@ -477,6 +510,8 @@ module core_rv32i_p5
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       mem_wb_q <= '0;
+    end else if (stall_mem) begin
+      mem_wb_q <= '0;                              // nothing retires while stalled
     end else begin
       mem_wb_q.valid   <= ex_mem_q.valid;
       mem_wb_q.pc      <= ex_mem_q.pc;

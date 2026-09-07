@@ -26,9 +26,10 @@ module tb_core_rv32i;
 
   core_rv32i #(.BOOT_ADDR(BOOT)) dut (
     .clk_i(clk), .rst_ni(rst_n),
-    .instr_addr_o(iaddr), .instr_rdata_i(irdata),
-    .data_addr_o(daddr), .data_we_o(dwe), .data_be_o(dbe),
-    .data_wdata_o(dwdata), .data_rdata_i(drdata),
+    .instr_req_o(), .instr_addr_o(iaddr), .instr_rdata_i(irdata),
+    .instr_ready_i(1'b1),
+    .data_req_o(), .data_addr_o(daddr), .data_we_o(dwe), .data_be_o(dbe),
+    .data_wdata_o(dwdata), .data_rdata_i(drdata), .data_ready_i(1'b1),
     .rvfi_valid_o(rvfi_valid), .rvfi_order_o(rvfi_order), .rvfi_insn_o(rvfi_insn),
     .rvfi_trap_o(rvfi_trap), .rvfi_rd_addr_o(rvfi_rd_addr),
     .rvfi_rd_wdata_o(rvfi_rd_wdata), .rvfi_pc_rdata_o(rvfi_pc_rdata),

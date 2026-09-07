@@ -1,0 +1,17 @@
+{
+  "study": "Does real memory latency favour the pipeline over the single-cycle core?",
+  "answer": "No. The hypothesis was wrong and is recorded as such.",
+  "benchmark": "hello.c, 297 instructions, both cores verified against Spike at every point",
+  "note": "LATENCY counts wait states, so an access costs LATENCY+1 cycles. Both the instruction and data ports use the same value. LATENCY=0 reproduces magic_mem exactly and is the control.",
+  "cycles": [
+    { "wait_states": 0, "single_cycle": 297,  "pipeline": 422,  "pipeline_penalty_pct": 42 },
+    { "wait_states": 1, "single_cycle": 594,  "pipeline": 765,  "pipeline_penalty_pct": 29 },
+    { "wait_states": 2, "single_cycle": 891,  "pipeline": 1147, "pipeline_penalty_pct": 29 },
+    { "wait_states": 4, "single_cycle": 1485, "pipeline": 1911, "pipeline_penalty_pct": 29 }
+  ],
+  "prediction": "That the single-cycle core would degrade faster, because it must fetch an instruction AND access data within one instruction, while a pipeline has them in separate stages that overlap.",
+  "outcome": "The penalty flattens at 29% and never closes. Memory latency hurts both cores by the same factor, so the pipeline keeps its hazard overhead as pure loss.",
+  "root_cause": "There is no fetch buffer. An instruction-fetch stall freezes the whole pipeline, so fetch latency is serialised per instruction exactly as it is on the single-cycle core. The stages cannot overlap what the front end will not decouple. The single-cycle core also gets a break the model gives for free: its instruction and data accesses use two independent ports whose counters run concurrently, so at 1 wait state it costs 2 cycles per instruction rather than 4.",
+  "what_would_actually_change_it": "An instruction cache, or even a small prefetch buffer, so IF can run ahead while MEM is blocked. That is the missing piece, not more pipeline stages. This result is the argument FOR building one.",
+  "still_unmeasured": "What putting memory inside the synthesised path does to Fmax. magic_mem and latency_mem are both simulation-only and excluded from synthesis, so the claim that a single-cycle core cannot fit fetch plus data access into one clock period remains untested here. Cycle counts say nothing about it either way."
+}

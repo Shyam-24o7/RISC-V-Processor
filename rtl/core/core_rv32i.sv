@@ -17,15 +17,19 @@ module core_rv32i
   input  logic        rst_ni,
 
   // Instruction memory: combinational read
+  output logic        instr_req_o,
   output logic [31:0] instr_addr_o,
   input  logic [31:0] instr_rdata_i,
+  input  logic        instr_ready_i,
 
   // Data memory
+  output logic        data_req_o,
   output logic [31:0] data_addr_o,
   output logic        data_we_o,
   output logic [3:0]  data_be_o,
   output logic [31:0] data_wdata_o,
   input  logic [31:0] data_rdata_i,
+  input  logic        data_ready_i,
 
   // RVFI retirement port (NRET=1) - what the Spike comparison consumes
   output logic        rvfi_valid_o,
@@ -50,6 +54,7 @@ module core_rv32i
   // ---- Fetch --------------------------------------------------------------
   logic [31:0] pc_q, pc_n, insn;
   assign instr_addr_o = pc_q;
+  assign instr_req_o  = 1'b1;              // fetching every cycle
   assign insn         = instr_rdata_i;
 
   // ---- Decode -------------------------------------------------------------
@@ -120,7 +125,13 @@ module core_rv32i
        (dec.funct3 == F3_SW && (|mem_addr[1:0])));
 
   // A misaligned or trapping store must never reach memory.
-  assign data_we_o = dec.is_store && !misaligned_store && !trap_taken;
+  // A request is raised for any real memory access; the memory commits a write
+  // only on the handshake cycle, so holding this across stall cycles is safe.
+  assign mem_op     = (dec.is_load || dec.is_store) && !trap_taken;
+  assign data_req_o = mem_op;
+  assign data_we_o  = dec.is_store && !misaligned_store && !trap_taken;
+
+  assign core_stall = !instr_ready_i || (mem_op && !data_ready_i);
 
   // Byte and halfword loads select a lane by address, then sign-extend from
   // the top bit OF THAT LANE - not from bit 31 of the word.
@@ -165,7 +176,7 @@ module core_rv32i
   // closes a combinational loop:
   //   trap_taken -> csr_we -> csr_illegal -> illegal_insn -> trap_taken
   // csr_file suppresses the write instead: its always_ff gives trap_i priority.
-  assign csr_we = dec.is_csr && csr_writes;
+  assign csr_we = dec.is_csr && csr_writes && !core_stall;
 
   logic insn_retired;
 
@@ -173,8 +184,8 @@ module core_rv32i
     .clk_i(clk_i), .rst_ni(rst_ni),
     .addr_i(dec.imm[11:0]), .wdata_i(csr_wdata), .we_i(csr_we),
     .rdata_o(csr_rdata), .illegal_o(csr_illegal),
-    .trap_i(trap_taken), .trap_cause_i(trap_cause), .trap_pc_i(pc_q),
-    .trap_val_i(trap_val), .mret_i(dec.is_mret && !trap_taken),
+    .trap_i(trap_taken && !core_stall), .trap_cause_i(trap_cause), .trap_pc_i(pc_q),
+    .trap_val_i(trap_val), .mret_i(dec.is_mret && !trap_taken && !core_stall),
     .tvec_o(mtvec), .epc_o(mepc), .insn_retired_i(insn_retired)
   );
 
@@ -211,7 +222,7 @@ module core_rv32i
     else                                rd_wdata = alu_result;
   end
 
-  assign rd_we = dec.rd_we && !trap_taken;
+  assign rd_we = dec.rd_we && !trap_taken && !core_stall;
 
   // ---- Next PC ------------------------------------------------------------
   always_comb begin
@@ -226,7 +237,8 @@ module core_rv32i
                              (dec.is_branch && branch_taken)) && (|pc_n_notrap[1:0]);
 
   always_comb begin
-    if      (trap_taken)  pc_n = mtvec;
+    if      (core_stall)  pc_n = pc_q;      // hold until memory answers
+    else if (trap_taken)  pc_n = mtvec;
     else if (dec.is_mret) pc_n = mepc;
     else                  pc_n = pc_n_notrap;
   end
@@ -238,12 +250,12 @@ module core_rv32i
 
   // ---- RVFI retirement port ----------------------------------------------
   // Nothing stalls, so an instruction retires every cycle after reset.
-  assign insn_retired = 1'b1;
+  assign insn_retired = !core_stall;
 
   logic [63:0] order_q;
   always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) order_q <= 64'd0;
-    else         order_q <= order_q + 64'd1;
+    if (!rst_ni)           order_q <= 64'd0;
+    else if (insn_retired) order_q <= order_q + 64'd1;
   end
 
   // RVFI requires rd_wdata to read ZERO whenever rd_addr is zero. Writes to x0

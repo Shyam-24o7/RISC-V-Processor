@@ -164,3 +164,33 @@ fetch-formal:
 # Usage: make formal CORE=core_sc
 formal: fetch-formal
 	@$(IN_DOCKER) bash -c 'sby -f -d /build/formal_$(CORE) verif/formal/$(CORE).sby'
+
+# Memory-latency sweep. LAT is the access latency in cycles, applied to BOTH
+# the instruction and data ports, and set at elaboration with -G.
+#   make cosim-lat PROG=hello CORE_TB=tb_core_p5_lat LAT=2
+LAT ?= 1
+
+.PHONY: cosim-lat
+cosim-lat:
+	@$(IN_DOCKER) bash -c 'set -euo pipefail; \
+	  mkdir -p /build/prog; \
+	  $(RVGCC) $(ARCH) -nostdlib -nostartfiles -O2 -Wall -g \
+	    -T verif/prog/link.ld verif/prog/crt0.S verif/prog/$(PROG).c \
+	    -o /build/prog/$(PROG).elf -lgcc; \
+	  $(RVOBJ) -O binary /build/prog/$(PROG).elf /build/prog/$(PROG).bin; \
+	  od -An -tx4 -v /build/prog/$(PROG).bin | tr -s " " "\n" | grep -v "^$$" \
+	    > /build/prog/$(PROG).hex; \
+	  rm -f /build/prog/$(PROG).spike; \
+	  spike --isa=rv32i_zicsr --priv=m -l --log-commits \
+	    --log=/build/prog/$(PROG).spike /build/prog/$(PROG).elf >/dev/null 2>&1; \
+	  test -s /build/prog/$(PROG).spike || \
+	    { echo "FATAL: spike wrote no commit log"; exit 1; }; \
+	  verilator $(VFLAGS) -GLATENCY=$(LAT) --top-module $(CORE_TB) \
+	    --Mdir /build/$(CORE_TB)_$(LAT) -o $(CORE_TB) \
+	    $(RTL_SRCS) verif/tb/$(CORE_TB).sv 2>&1 | grep -E "^%Error" || true; \
+	  /build/$(CORE_TB)_$(LAT)/$(CORE_TB) +hex=/build/prog/$(PROG).hex \
+	    +trace=/build/prog/$(PROG).rtl +max_cycles=2000000; \
+	  STOP=$$(riscv64-unknown-elf-nm /build/prog/$(PROG).elf \
+	          | awk "/ _finish_loop\$$/ {print \$$1}"); \
+	  python3 scripts/compare_trace.py --rtl /build/prog/$(PROG).rtl \
+	    --spike /build/prog/$(PROG).spike --start-pc $(ENTRY_PC) --stop-pc 0x$$STOP'
