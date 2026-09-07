@@ -83,6 +83,10 @@ tb:
 	   $(RTL_SRCS) verif/tb/$(TB).sv \
 	   && /build/$(TB)/$(TB)'
 
+# Which core-level testbench cosim and regress drive. The RVFI harness is
+# microarchitecture-independent, so switching cores needs nothing else.
+CORE_TB ?= tb_core_rv32i
+
 RVGCC := riscv64-unknown-elf-gcc
 RVOBJ := riscv64-unknown-elf-objcopy
 ARCH  := -march=rv32i -mabi=ilp32 -mcmodel=medany
@@ -105,9 +109,9 @@ cosim:
 	    --log=/build/prog/$(PROG).spike /build/prog/$(PROG).elf >/dev/null 2>&1; \
 	  test -s /build/prog/$(PROG).spike || \
 	    { echo "FATAL: spike wrote no commit log - refusing to compare against a stale one"; exit 1; }; \
-	  verilator $(VFLAGS) --top-module tb_core_rv32i --Mdir /build/tb_core_rv32i \
-	    -o tb_core_rv32i $(RTL_SRCS) verif/tb/tb_core_rv32i.sv 2>&1 | grep -E "^%Error" || true; \
-	  /build/tb_core_rv32i/tb_core_rv32i +hex=/build/prog/$(PROG).hex \
+	  verilator $(VFLAGS) --top-module $(CORE_TB) --Mdir /build/$(CORE_TB) \
+	    -o $(CORE_TB) $(RTL_SRCS) verif/tb/$(CORE_TB).sv 2>&1 | grep -E "^%Error" || true; \
+	  /build/$(CORE_TB)/$(CORE_TB) +hex=/build/prog/$(PROG).hex \
 	    +trace=/build/prog/$(PROG).rtl +max_cycles=200000; \
 	  STOP=$$(riscv64-unknown-elf-nm /build/prog/$(PROG).elf \
 	          | awk "/ _finish_loop\$$/ {print \$$1}"); \
@@ -130,9 +134,9 @@ fetch-tests:
 #        make regress FILTER=add (subset)
 regress:
 	@$(IN_DOCKER) bash -c 'set -euo pipefail; \
-	  verilator $(VFLAGS) --top-module tb_core_rv32i --Mdir /build/tb_core_rv32i \
-	    -o tb_core_rv32i $(RTL_SRCS) verif/tb/tb_core_rv32i.sv 2>&1 | grep -E "^%Error" || true; \
-	  python3 scripts/run_regress.py --sim /build/tb_core_rv32i/tb_core_rv32i \
+	  verilator $(VFLAGS) --top-module $(CORE_TB) --Mdir /build/$(CORE_TB) \
+	    -o $(CORE_TB) $(RTL_SRCS) verif/tb/$(CORE_TB).sv 2>&1 | grep -E "^%Error" || true; \
+	  python3 scripts/run_regress.py --sim /build/$(CORE_TB)/$(CORE_TB) \
 	    --filter "$(FILTER)"'
 
 # Vivado is a native Windows install, so this target runs OUTSIDE the container,

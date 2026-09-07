@@ -70,14 +70,34 @@ module tb_core_rv32i;
     end
   end
 
+  // The tohost store commits at MEM, but on a pipelined core the storing
+  // instruction does not RETIRE until WB. Finishing the moment the store
+  // appears would cut the trace short by the depth of the pipeline, so drain
+  // first and only then report. Harmless on a single-cycle core, where store
+  // and retirement are the same cycle.
+  localparam int DRAIN_CYCLES = 8;
+  int          drain = -1;
+  logic [31:0] tohost_val;
+  int          done_cycles;
+  // Captured at the store, not after the drain, so IPC is not skewed by the
+  // extra cycles spent letting the pipeline empty.
+  logic [63:0] done_retired;
+
   always_ff @(posedge clk) begin
     if (rst_n) begin
       cycles <= cycles + 1;
-      if (dwe && (daddr == tohost_addr)) begin
+      if ((drain < 0) && dwe && (daddr == tohost_addr)) begin
         // riscv-tests encodes its result here: 1 passes, any other odd value is
         // (failing_test << 1) | 1.
+        tohost_val   <= dwdata;
+        done_cycles  <= cycles;
+        done_retired <= rvfi_order;
+        drain       <= DRAIN_CYCLES;
+      end else if (drain > 0) begin
+        drain <= drain - 1;
+      end else if (drain == 0) begin
         $display("PROGRAM DONE tohost=0x%08x cycles=%0d retired=%0d",
-                 dwdata, cycles, rvfi_order);
+                 tohost_val, done_cycles, done_retired);
         $fclose(fd);
         $finish;
       end
