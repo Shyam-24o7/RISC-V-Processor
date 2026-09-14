@@ -28,6 +28,11 @@ set srcs [list \
   rtl/common/csr_file.sv \
   rtl/core/$core.sv ]
 
+# The pipelined core instantiates the fetch unit; the single-cycle one does not.
+# read_verilog on an unused file is harmless, so add it unconditionally rather
+# than branching on the core name.
+lappend srcs rtl/core/fetch_unit.sv
+
 create_project -in_memory -part $part
 foreach s $srcs { read_verilog -sv $s }
 set_property top $core [current_fileset]

@@ -117,6 +117,9 @@ what gets written back. The next-PC decision feeds back to the top.
 | `rtl/common/decoder.sv` | 135 | Instruction word → control bundle + sign-extended immediate |
 | `rtl/common/csr_file.sv` | 169 | Machine-mode CSRs, trap entry/exit, performance counters |
 | `rtl/mem/magic_mem.sv` | 59 | Zero-latency memory model (simulation only) |
+| `rtl/mem/latency_mem.sv` | — | Memory with configurable wait states and a ready handshake; optional pipelined instruction port |
+| `rtl/core/fetch_unit.sv` | — | Decoupled fetch: runs the fetch address ahead, buffers arriving instructions |
+| `rtl/core/core_rv32i_p5.sv` | — | Five-stage pipelined core |
 | `rtl/core/core_rv32i.sv` | 265 | Top-level datapath tying it all together |
 
 ### 2.2 Details that are easy to get wrong
@@ -333,6 +336,45 @@ fails the build — and it reports if a known gap *starts* passing, so the list 
 
 ---
 
+## 5.1 Memory latency, and why the front end decides the answer
+
+The most useful result in this project came from a prediction that turned out
+wrong. With ideal memory the pipelined core measures *worse* than the
+single-cycle one in cycles, and the obvious explanation is that `magic_mem`
+hides the cost of memory. Testing that by sweeping real latency disproved it —
+the pipeline stayed about 29% worse at **every** latency:
+
+| Wait states | Single-cycle | Pipeline (no fetch buffer) |
+|---|---|---|
+| 0 | 297 | 422 |
+| 1 | 594 | 765 |
+| 2 | 891 | 1147 |
+| 4 | 1485 | 1911 |
+
+A penalty that neither grows nor shrinks is not a memory effect. The real cause
+was structural: an instruction-fetch stall froze the entire pipeline, so fetch
+latency was serialised per instruction exactly as on a single-cycle core.
+**Separate pipeline stages cannot overlap what the front end refuses to
+decouple.**
+
+Fixing it took two changes, and neither works alone — a prefetch buffer cannot
+fill from a memory that serves one request at a time, and a pipelined memory
+port is useless with nowhere to put the results:
+
+| Wait states | Single-cycle | Pipeline + fetch buffer | Speedup |
+|---|---|---|---|
+| 0 | 297 | 484 | 0.61x |
+| 1 | 594 | **506** | **1.17x** |
+| 2 | 891 | **590** | **1.51x** |
+| 4 | 1485 | **805** | **1.84x** |
+
+The margin *grows* with latency, which is the signature of genuine overlap
+rather than a constant offset. At zero latency the buffer costs 62 cycles,
+because it registers its response so an instruction takes one extra cycle to
+reach decode — pure overhead when memory is free. That is exactly why a
+comparison run only against ideal memory can never show a pipeline in a fair
+light.
+
 ## 6. Results
 
 | Core | IPC | Fmax (MHz) | LUT / FF / BRAM / DSP |
@@ -380,11 +422,14 @@ The verification harness is deliberately microarchitecture-independent: it consu
 RVFI retirement port, so a different core implementing the same interface is validated by
 the same flow with no changes. Planned next:
 
-- **5-stage pipeline** — IF/ID/EX/MEM/WB with a forwarding unit, load-use interlock and
-  branch flush. Much shorter clock period; hazards become real.
-- **Custom AI instructions** in the reserved custom opcode space — fused multiply-accumulate
+- **Branch target buffer** in the fetch stage. Static prediction resolved in ID was tried
+  and reverted: it bought 8% IPC and cost 23% Fmax, because it added a level to the PC
+  redirect mux, which sits on the core's critical path. A BTB predicts *before* decode and
+  adds no depth to that path, which is the property that matters.
+- **Custom AI instructions** in the reserved custom opcode space — a fused multiply-accumulate
   with a wide accumulator, and an INT8 packed dot product, the core primitive for quantized
-  inference.
+  inference. Note CV32E40P places its SIMD ops at opcode `0x3B`, which is *not* one of
+  RISC-V's four reserved custom opcodes (`0x0B`, `0x2B`, `0x5B`, `0x7B`) — worth avoiding.
 
 ---
 
