@@ -81,9 +81,7 @@ module core_rv32i_p5
     logic [31:0] store_data;   // rs2 after forwarding
     logic [31:0] mem_addr;
     logic [31:0] pc_next;      // this instruction's own next PC, for RVFI
-    logic        exc_valid;
-    logic [31:0] exc_cause;
-    logic [31:0] exc_tval;
+    logic        fetch_misaligned;   // the only exception that needs EX to detect
   } ex_mem_t;
 
   typedef struct packed {
@@ -285,38 +283,13 @@ module core_rv32i_p5
   logic [31:0] mem_addr_ex;
   assign mem_addr_ex = fwd_rs1 + id_ex_q.dec.imm;
 
-  logic misaligned_ld_ex, misaligned_st_ex, misaligned_fetch_ex;
-  assign misaligned_ld_ex = id_ex_q.dec.is_load &&
-      (((id_ex_q.dec.funct3 == F3_LH || id_ex_q.dec.funct3 == F3_LHU) && mem_addr_ex[0]) ||
-       ( id_ex_q.dec.funct3 == F3_LW && (|mem_addr_ex[1:0])));
-  assign misaligned_st_ex = id_ex_q.dec.is_store &&
-      ((id_ex_q.dec.funct3 == F3_SH && mem_addr_ex[0]) ||
-       (id_ex_q.dec.funct3 == F3_SW && (|mem_addr_ex[1:0])));
+  // Fetch misalignment depends on the branch decision, so it is detected here
+  // and carried as one bit. Every other exception is classified at MEM from
+  // fields already in the EX/MEM register: that was worth doing because the
+  // priority mux and its 32-bit tval select sat at the end of the longest path
+  // in the design (forwarding -> adder -> alignment -> priority -> tval).
+  logic misaligned_fetch_ex;
   assign misaligned_fetch_ex = take_branch_ex && (|branch_target_ex[1:0]);
-
-  // Exception priority, evaluated here and carried to MEM where it is taken.
-  logic        exc_valid_ex;
-  logic [31:0] exc_cause_ex, exc_tval_ex;
-  always_comb begin
-    exc_valid_ex = 1'b0;
-    exc_cause_ex = '0;
-    exc_tval_ex  = '0;
-    if (id_ex_q.valid) begin
-      if (id_ex_q.dec.illegal) begin
-        exc_valid_ex = 1'b1; exc_cause_ex = EXC_ILLEGAL_INSN;      exc_tval_ex = id_ex_q.insn;
-      end else if (id_ex_q.dec.is_ecall) begin
-        exc_valid_ex = 1'b1; exc_cause_ex = EXC_ECALL_M;           exc_tval_ex = '0;
-      end else if (id_ex_q.dec.is_ebreak) begin
-        exc_valid_ex = 1'b1; exc_cause_ex = EXC_BREAKPOINT;        exc_tval_ex = id_ex_q.pc;
-      end else if (misaligned_ld_ex) begin
-        exc_valid_ex = 1'b1; exc_cause_ex = EXC_LOAD_MISALIGNED;   exc_tval_ex = mem_addr_ex;
-      end else if (misaligned_st_ex) begin
-        exc_valid_ex = 1'b1; exc_cause_ex = EXC_STORE_MISALIGNED;  exc_tval_ex = mem_addr_ex;
-      end else if (misaligned_fetch_ex) begin
-        exc_valid_ex = 1'b1; exc_cause_ex = EXC_INSN_MISALIGNED;   exc_tval_ex = branch_target_ex;
-      end
-    end
-  end
 
   // ---- EX/MEM ----
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -336,9 +309,7 @@ module core_rv32i_p5
       ex_mem_q.store_data <= fwd_rs2;
       ex_mem_q.mem_addr   <= mem_addr_ex;
       ex_mem_q.pc_next    <= pc_next_ex;
-      ex_mem_q.exc_valid  <= exc_valid_ex;
-      ex_mem_q.exc_cause  <= exc_cause_ex;
-      ex_mem_q.exc_tval   <= exc_tval_ex;
+      ex_mem_q.fetch_misaligned <= misaligned_fetch_ex;
     end
   end
 
@@ -389,16 +360,51 @@ module core_rv32i_p5
   // the trap decision would close a combinational loop through csr_illegal.
   assign csr_we = ex_mem_q.valid && ex_mem_q.dec.is_csr && csr_writes && !stall_mem;
 
+  // ---- Exception classification ----
+  // Priority matches the single-cycle core. For a fetch misalignment the
+  // registered pc_next IS the branch target, so no extra state is carried.
+  logic misaligned_ld_mem, misaligned_st_mem;
+  assign misaligned_ld_mem = ex_mem_q.dec.is_load &&
+      (((ex_mem_q.dec.funct3 == F3_LH || ex_mem_q.dec.funct3 == F3_LHU) && ex_mem_q.mem_addr[0]) ||
+       ( ex_mem_q.dec.funct3 == F3_LW && (|ex_mem_q.mem_addr[1:0])));
+  assign misaligned_st_mem = ex_mem_q.dec.is_store &&
+      ((ex_mem_q.dec.funct3 == F3_SH && ex_mem_q.mem_addr[0]) ||
+       (ex_mem_q.dec.funct3 == F3_SW && (|ex_mem_q.mem_addr[1:0])));
+
+  logic        exc_valid_mem;
+  logic [31:0] exc_cause_mem, exc_tval_mem;
+  always_comb begin
+    exc_valid_mem = 1'b1;
+    exc_cause_mem = '0;
+    exc_tval_mem  = '0;
+    if (ex_mem_q.dec.illegal) begin
+      exc_cause_mem = EXC_ILLEGAL_INSN;      exc_tval_mem = ex_mem_q.insn;
+    end else if (ex_mem_q.dec.is_ecall) begin
+      exc_cause_mem = EXC_ECALL_M;
+    end else if (ex_mem_q.dec.is_ebreak) begin
+      exc_cause_mem = EXC_BREAKPOINT;        exc_tval_mem = ex_mem_q.pc;
+    end else if (misaligned_ld_mem) begin
+      exc_cause_mem = EXC_LOAD_MISALIGNED;   exc_tval_mem = ex_mem_q.mem_addr;
+    end else if (misaligned_st_mem) begin
+      exc_cause_mem = EXC_STORE_MISALIGNED;  exc_tval_mem = ex_mem_q.mem_addr;
+    end else if (ex_mem_q.fetch_misaligned) begin
+      exc_cause_mem = EXC_INSN_MISALIGNED;   exc_tval_mem = ex_mem_q.pc_next;
+    end else begin
+      exc_valid_mem = 1'b0;
+    end
+    if (!ex_mem_q.valid) exc_valid_mem = 1'b0;
+  end
+
   // ---- The trap point ----
   // Everything older has already retired; everything younger is still in the
   // pipe and gets flushed. That is what makes the exception precise.
   logic        trap_taken;
   logic [31:0] trap_cause, trap_tval;
   always_comb begin
-    if (ex_mem_q.valid && ex_mem_q.exc_valid) begin
+    if (exc_valid_mem) begin
       trap_taken = 1'b1;
-      trap_cause = ex_mem_q.exc_cause;
-      trap_tval  = ex_mem_q.exc_tval;
+      trap_cause = exc_cause_mem;
+      trap_tval  = exc_tval_mem;
     end else if (ex_mem_q.valid && ex_mem_q.dec.is_csr && csr_illegal) begin
       trap_taken = 1'b1;
       trap_cause = EXC_ILLEGAL_INSN;
@@ -417,12 +423,12 @@ module core_rv32i_p5
   logic mem_op;
   assign mem_op     = ex_mem_q.valid &&
                       (ex_mem_q.dec.is_load || ex_mem_q.dec.is_store) &&
-                      !ex_mem_q.exc_valid && !trap_taken;
+                      !trap_taken;
   assign data_req_o = mem_op;
   assign stall_mem  = mem_op && !data_ready_i;
 
   assign data_we_o = ex_mem_q.valid && ex_mem_q.dec.is_store &&
-                     !ex_mem_q.exc_valid && !trap_taken;
+                     !trap_taken;
 
   logic wb_valid;   // WB stage retires an instruction this cycle
 

@@ -29,6 +29,11 @@ clock, but one clock period must then contain fetch, decode, execute, memory and
 writeback - so it buys its IPC with a slow clock. Real throughput is
 `IPC x Fmax`, which is why both are recorded and why the MIPS column exists.
 
+**These IPC figures assume ideal memory.** That is the one case where the
+pipeline's prefetch buffer is pure overhead; under any real memory latency the
+ranking flips (see raw/fetch_buffer_study.json). The MIPS column is therefore a
+lower bound for the pipeline, not its real-world throughput.
+
 **MIPS is only comparable within one ISA.** It counts instructions, not work.
 An RV32I core scores far higher MIPS than an RV32IM core on the same C source
 purely because it executes far more instructions to compute the same answer -

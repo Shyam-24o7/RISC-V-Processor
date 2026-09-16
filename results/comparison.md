@@ -7,12 +7,17 @@ with the same pinned toolchain, so the rows are directly comparable.
 | Core | IPC | Fmax (MHz) | LUT / FF / BRAM / DSP | MIPS |
 |---|---|---|---|---|
 | RV32I single-cycle | 1.000 | 215.5 | 2094 / 1438 / 0 / 0 | 215.5 |
-| RV32I 5-stage pipeline | 0.701 | 251.3 | 2411 / 2119 / 0 / 0 | 176.2 |
+| RV32I 5-stage pipeline | 0.612 | 266.2 | 2661 / 2431 / 0 / 0 | 162.9 |
 
 **IPC alone is misleading.** A single-cycle datapath retires one instruction per
 clock, but one clock period must then contain fetch, decode, execute, memory and
 writeback - so it buys its IPC with a slow clock. Real throughput is
 `IPC x Fmax`, which is why both are recorded and why the MIPS column exists.
+
+**These IPC figures assume ideal memory.** That is the one case where the
+pipeline's prefetch buffer is pure overhead; under any real memory latency the
+ranking flips (see raw/fetch_buffer_study.json). The MIPS column is therefore a
+lower bound for the pipeline, not its real-world throughput.
 
 **MIPS is only comparable within one ISA.** It counts instructions, not work.
 An RV32I core scores far higher MIPS than an RV32IM core on the same C source

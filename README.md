@@ -380,6 +380,23 @@ light.
 | Core | IPC | Fmax (MHz) | LUT / FF / BRAM / DSP |
 |---|---|---|---|
 | RV32I single-cycle | 1.000 | 215.5 | 2094 / 1438 / 0 / 0 |
+| RV32I 5-stage pipeline | 0.612 | 266.2 | 2661 / 2431 / 0 / 0 |
+
+Both IPC figures are for **ideal memory**, the one case where the pipeline's prefetch
+buffer is pure overhead. Under any real memory latency the ranking flips (section 5.1),
+so do not read IPC × Fmax from this table as the pipeline's real-world throughput.
+
+**Why the pipeline is only 266 MHz.** Five stages do not give five times the frequency.
+The limit is the longest single stage, and in EX that stage does forwarding, a 32-bit add,
+a 32-bit compare and the branch redirect in one cycle. About 65% of the path delay is
+routing, and a synthesis-only estimate on a low-power (-2LV) part is conservative. The
+exception priority chain and its 32-bit `tval` select used to sit at the end of that path;
+moving them to MEM, where every input is already registered, took the core from 260.2 to
+266.2 MHz. A follow-up change (taking the CSR legality decode off the memory-stall path)
+was behaviourally identical but *lost* 14 MHz once synthesis restructured the design, so
+it was reverted. Both attempts are recorded in
+`results/raw/core_rv32i_p5_timing_study.json`. The critical path is now the EX branch
+compare feeding the fetch-unit redirect.
 
 **On reading these numbers.** IPC alone is misleading: a single-cycle datapath buys its
 perfect IPC with a slow clock. MIPS is only comparable *within* one ISA, because it counts
@@ -398,8 +415,8 @@ data access time sit outside every measured path — which a real single-cycle c
 ```
 rtl/
   common/     rv32_pkg.sv  alu.sv  regfile.sv  decoder.sv  csr_file.sv
-  mem/        magic_mem.sv
-  core/       core_rv32i.sv
+  mem/        magic_mem.sv  latency_mem.sv
+  core/       core_rv32i.sv  core_rv32i_p5.sv  fetch_unit.sv
 verif/
   tb/         one self-checking testbench per module, plus the trace-dumping top
   prog/       crt0.S, linker script, C benchmark, smoke program
