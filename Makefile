@@ -64,21 +64,34 @@ tools-check:
 	  fi; \
 	  echo "  OK spike commit logging enabled"'
 
-VFLAGS := --binary --timing -Wall -Wno-fatal -Irtl/common -Irtl/mem -Irtl/core
-
 # rv32_pkg.sv MUST come first: every module imports it, and a package has to be
-# analysed before its first use. A plain alphabetical glob puts it last (after
-# alu, csr_file, decoder, mul_div, regfile) and the build fails on an
-# undefined type. wildcard keeps this relative-path-only, as required.
+# analysed before its first use. wildcard keeps this relative-path-only.
 RTL_SRCS := rtl/common/rv32_pkg.sv \
             $(filter-out rtl/common/rv32_pkg.sv, \
               $(wildcard rtl/common/*.sv) $(wildcard rtl/mem/*.sv) \
-              $(wildcard rtl/core/*.sv))
+              $(wildcard rtl/core/*.sv) $(wildcard rtl/soc/*.sv))
+
+VINC   := -Irtl/common -Irtl/mem -Irtl/core -Irtl/soc
+# Simulation builds keep going on warnings; `make lint` is the warning gate.
+VFLAGS := --binary --timing --assert -Wno-fatal $(VINC)
+
+# Every synthesisable top, linted with all warnings fatal. A task that adds a
+# top-level module adds it here.
+LINT_TOPS := core_rv32i core_rv32i_p5
+
+.PHONY: lint
+lint:
+	@$(IN_DOCKER) bash -c 'set -euo pipefail; \
+	  for t in $(LINT_TOPS); do \
+	    echo "lint $$t"; \
+	    verilator --lint-only -Wall $(VINC) --top-module $$t $(RTL_SRCS); \
+	  done; echo "lint clean"'
 
 .PHONY: tb
 # Usage: make tb TB=tb_alu
-tb:
-	@$(IN_DOCKER) bash -c 'verilator $(VFLAGS) --top-module $(TB) \
+tb: lint
+	@$(IN_DOCKER) bash -c 'set -euo pipefail; rm -f /build/$(TB)/$(TB); \
+	   verilator $(VFLAGS) --top-module $(TB) \
 	   --Mdir /build/$(TB) -o $(TB) \
 	   $(RTL_SRCS) verif/tb/$(TB).sv \
 	   && /build/$(TB)/$(TB)'
@@ -95,7 +108,7 @@ ENTRY_PC := 0x80000000
 .PHONY: cosim
 # Usage: make cosim PROG=hello
 # Builds an ELF, runs Spike and the RTL on it, and diffs the two traces.
-cosim:
+cosim: lint
 	@$(IN_DOCKER) bash -c 'set -euo pipefail; \
 	  mkdir -p /build/prog; \
 	  $(RVGCC) $(ARCH) -nostdlib -nostartfiles -O2 -Wall -g \
@@ -109,8 +122,9 @@ cosim:
 	    --log=/build/prog/$(PROG).spike /build/prog/$(PROG).elf >/dev/null 2>&1; \
 	  test -s /build/prog/$(PROG).spike || \
 	    { echo "FATAL: spike wrote no commit log - refusing to compare against a stale one"; exit 1; }; \
+	  rm -f /build/$(CORE_TB)/$(CORE_TB); \
 	  verilator $(VFLAGS) --top-module $(CORE_TB) --Mdir /build/$(CORE_TB) \
-	    -o $(CORE_TB) $(RTL_SRCS) verif/tb/$(CORE_TB).sv 2>&1 | grep -E "^%Error" || true; \
+	    -o $(CORE_TB) $(RTL_SRCS) verif/tb/$(CORE_TB).sv; \
 	  /build/$(CORE_TB)/$(CORE_TB) +hex=/build/prog/$(PROG).hex \
 	    +trace=/build/prog/$(PROG).rtl +max_cycles=200000; \
 	  STOP=$$(riscv64-unknown-elf-nm /build/prog/$(PROG).elf \
@@ -132,10 +146,11 @@ fetch-tests:
 .PHONY: regress
 # Usage: make regress            (all rv32ui/um/mi p-mode tests)
 #        make regress FILTER=add (subset)
-regress:
+regress: lint
 	@$(IN_DOCKER) bash -c 'set -euo pipefail; \
+	  rm -f /build/$(CORE_TB)/$(CORE_TB); \
 	  verilator $(VFLAGS) --top-module $(CORE_TB) --Mdir /build/$(CORE_TB) \
-	    -o $(CORE_TB) $(RTL_SRCS) verif/tb/$(CORE_TB).sv 2>&1 | grep -E "^%Error" || true; \
+	    -o $(CORE_TB) $(RTL_SRCS) verif/tb/$(CORE_TB).sv; \
 	  python3 scripts/run_regress.py --sim /build/$(CORE_TB)/$(CORE_TB) \
 	    --filter "$(FILTER)"'
 
@@ -171,7 +186,7 @@ formal: fetch-formal
 LAT ?= 1
 
 .PHONY: cosim-lat
-cosim-lat:
+cosim-lat: lint
 	@$(IN_DOCKER) bash -c 'set -euo pipefail; \
 	  mkdir -p /build/prog; \
 	  $(RVGCC) $(ARCH) -nostdlib -nostartfiles -O2 -Wall -g \
@@ -185,9 +200,10 @@ cosim-lat:
 	    --log=/build/prog/$(PROG).spike /build/prog/$(PROG).elf >/dev/null 2>&1; \
 	  test -s /build/prog/$(PROG).spike || \
 	    { echo "FATAL: spike wrote no commit log"; exit 1; }; \
+	  rm -f /build/$(CORE_TB)_$(LAT)/$(CORE_TB); \
 	  verilator $(VFLAGS) -GLATENCY=$(LAT) --top-module $(CORE_TB) \
 	    --Mdir /build/$(CORE_TB)_$(LAT) -o $(CORE_TB) \
-	    $(RTL_SRCS) verif/tb/$(CORE_TB).sv 2>&1 | grep -E "^%Error" || true; \
+	    $(RTL_SRCS) verif/tb/$(CORE_TB).sv; \
 	  /build/$(CORE_TB)_$(LAT)/$(CORE_TB) +hex=/build/prog/$(PROG).hex \
 	    +trace=/build/prog/$(PROG).rtl +max_cycles=2000000; \
 	  STOP=$$(riscv64-unknown-elf-nm /build/prog/$(PROG).elf \
