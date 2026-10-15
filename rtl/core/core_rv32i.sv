@@ -50,6 +50,8 @@ module core_rv32i
   logic [31:0] trap_cause, trap_val;
   logic [31:0] pc_n_notrap;
   logic        misaligned_fetch;
+  logic        mem_op;       // a real load/store is being presented
+  logic        core_stall;   // waiting on instruction or data memory
 
   // ---- Fetch --------------------------------------------------------------
   logic [31:0] pc_q, pc_n, insn;

@@ -1,9 +1,6 @@
-// Single source of truth for RV32IM_Zicsr encodings. Every core in every phase
+// Single source of truth for RV32I + Zicsr encodings. Every core
 // imports this package; nothing else may define these constants.
 package rv32_pkg;
-
-  parameter int XLEN = 32;
-  parameter int NRET = 1;   // RVFI retirement channels; becomes 2 at Phase 3
 
   // ---- Opcodes (instr[6:0]) ----
   parameter logic [6:0] OP_LUI    = 7'b0110111;
@@ -31,15 +28,10 @@ package rv32_pkg;
   parameter logic [2:0] F3_PRIV = 3'b000,
                         F3_CSRRW=3'b001, F3_CSRRS=3'b010, F3_CSRRC=3'b011,
                         F3_CSRRWI=3'b101,F3_CSRRSI=3'b110,F3_CSRRCI=3'b111;
-  // M extension
-  parameter logic [2:0] F3_MUL=3'b000, F3_MULH=3'b001, F3_MULHSU=3'b010,
-                        F3_MULHU=3'b011, F3_DIV=3'b100, F3_DIVU=3'b101,
-                        F3_REM=3'b110, F3_REMU=3'b111;
 
   // ---- funct7 ----
   parameter logic [6:0] F7_ZERO = 7'b0000000;
   parameter logic [6:0] F7_SUB_SRA = 7'b0100000;
-  parameter logic [6:0] F7_MULDIV  = 7'b0000001;
 
   // ---- SYSTEM instr[31:20] ----
   parameter logic [11:0] SYS_ECALL  = 12'h000;

@@ -13,7 +13,6 @@ module tb_rv32_pkg;
   endtask
 
   initial begin
-    chk("XLEN",         XLEN,            32);
     chk("OP_LUI",       OP_LUI,          7'b0110111);
     chk("OP_AUIPC",     OP_AUIPC,        7'b0010111);
     chk("OP_JAL",       OP_JAL,          7'b1101111);
@@ -32,7 +31,6 @@ module tb_rv32_pkg;
     chk("EXC_ECALL_M",  EXC_ECALL_M,      32'd11);
 
     // ---- misc parameters / remaining opcode ----
-    chk("NRET",         NRET,            1);
     chk("OP_FENCE",     OP_FENCE,        7'b0001111);
 
     // ---- funct3: arithmetic/logic (R-type and OP-IMM) ----
@@ -74,20 +72,10 @@ module tb_rv32_pkg;
     chk("F3_CSRRSI",    F3_CSRRSI,       3'b110);
     chk("F3_CSRRCI",    F3_CSRRCI,       3'b111);
 
-    // ---- funct3: M extension (with funct7 = F7_MULDIV) ----
-    chk("F3_MUL",       F3_MUL,          3'b000);
-    chk("F3_MULH",      F3_MULH,         3'b001);
-    chk("F3_MULHSU",    F3_MULHSU,       3'b010);
-    chk("F3_MULHU",     F3_MULHU,        3'b011);
-    chk("F3_DIV",       F3_DIV,          3'b100);
-    chk("F3_DIVU",      F3_DIVU,         3'b101);
-    chk("F3_REM",       F3_REM,          3'b110);
-    chk("F3_REMU",      F3_REMU,         3'b111);
 
     // ---- funct7 ----
     chk("F7_ZERO",      F7_ZERO,         7'b0000000);
     chk("F7_SUB_SRA",   F7_SUB_SRA,      7'b0100000);
-    chk("F7_MULDIV",    F7_MULDIV,       7'b0000001);
 
     // ---- SYSTEM instr[31:20] ----
     chk("SYS_ECALL",    SYS_ECALL,       12'h000);

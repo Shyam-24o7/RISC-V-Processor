@@ -39,6 +39,7 @@ module fetch_unit #(
 );
 
   localparam int CW = $clog2(DEPTH + 1);
+  localparam int IW = $clog2(DEPTH);   // index width; counts need one bit more
 
   logic [31:0] fetch_pc_q;
 
@@ -108,7 +109,7 @@ module fetch_unit #(
         for (int k = 0; k < DEPTH-1; k++) pcq_q[k] <= pcq_q[k+1];
       end
       if (can_issue) begin
-        pcq_q[resp_keep ? (pcq_cnt_q - CW'(1)) : pcq_cnt_q] <= fetch_pc_q;
+        pcq_q[IW'(resp_keep ? (pcq_cnt_q - CW'(1)) : pcq_cnt_q)] <= fetch_pc_q;
         fetch_pc_q <= fetch_pc_q + 32'd4;
       end
 
@@ -125,11 +126,11 @@ module fetch_unit #(
           ibuf_pc_q[k] <= ibuf_pc_q[k+1];
           ibuf_in_q[k] <= ibuf_in_q[k+1];
         end
-        ibuf_pc_q[ibuf_cnt_q - CW'(1)] <= pcq_q[0];
-        ibuf_in_q[ibuf_cnt_q - CW'(1)] <= instr_rdata_i;
+        ibuf_pc_q[IW'(ibuf_cnt_q - CW'(1))] <= pcq_q[0];
+        ibuf_in_q[IW'(ibuf_cnt_q - CW'(1))] <= instr_rdata_i;
       end else if (resp_keep) begin
-        ibuf_pc_q[ibuf_cnt_q] <= pcq_q[0];
-        ibuf_in_q[ibuf_cnt_q] <= instr_rdata_i;
+        ibuf_pc_q[IW'(ibuf_cnt_q)] <= pcq_q[0];
+        ibuf_in_q[IW'(ibuf_cnt_q)] <= instr_rdata_i;
         ibuf_cnt_q            <= ibuf_cnt_q + CW'(1);
       end else if (pop) begin
         for (int k = 0; k < DEPTH-1; k++) begin
@@ -140,5 +141,18 @@ module fetch_unit #(
       end
     end
   end
+
+`ifndef SYNTHESIS
+  // The truncating casts above are safe only because of this: a request is
+  // issued only while in-flight plus buffered entries are below DEPTH, so no
+  // write index can reach DEPTH. If this ever fires, entry 0 is being
+  // overwritten.
+  always_ff @(posedge clk_i) begin
+    if (rst_ni) begin
+      assert ((32'(pcq_cnt_q) + 32'(ibuf_cnt_q)) <= DEPTH)
+        else $error("fetch_unit occupancy %0d+%0d exceeds DEPTH", pcq_cnt_q, ibuf_cnt_q);
+    end
+  end
+`endif
 
 endmodule

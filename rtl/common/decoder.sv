@@ -103,9 +103,8 @@ module decoder
       OP_REG: begin
         dec_o.rd_we  = 1'b1;
         dec_o.alu_op = alu_arith;
-        // This core is RV32I. funct7 = 0000001 is the M extension (MUL/DIV),
-        // so it decodes as illegal here rather than as an arithmetic op - that
-        // is what makes this RV32I rather than RV32IM with the unit removed.
+        // RV32I: any funct7 other than 0000000, or 0100000 for SUB/SRA, is
+        // illegal - including 0000001, the M extension's MUL/DIV.
         dec_o.illegal = (funct7 != F7_ZERO) &&
                         !((funct7 == F7_SUB_SRA) &&
                           (funct3 == F3_ADD_SUB || funct3 == F3_SR));
