@@ -393,8 +393,8 @@ RVFI retirement port, so a different core implementing the same interface is val
 the same flow with no changes. Planned next:
 
 - **Branch target buffer** in the fetch stage. Static prediction resolved in ID was tried
-  and reverted: it bought 8% IPC and cost 23% Fmax, because it added a level to the PC
-  redirect mux, which sits on the core's critical path. A BTB predicts *before* decode and
+  and reverted: it bought 8% IPC, but the extra input on the PC
+  redirect mux sat on the EX critical path (results/experiments.md, section 3). A BTB predicts *before* decode and
   adds no depth to that path, which is the property that matters.
 - **Custom AI instructions** in the reserved custom opcode space — a fused multiply-accumulate
   with a wide accumulator, and an INT8 packed dot product, the core primitive for quantized

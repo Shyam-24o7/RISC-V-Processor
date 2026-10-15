@@ -10,7 +10,7 @@ Spike commit-log line:
     core   0: 3 0x00001000 (0x00000297) x 5 0x00001000
               ^priv ^pc      ^insn        ^rd ^value
 
-RTL trace line (emitted by verif/tb/tb_core_sc.sv):
+RTL trace line (emitted by verif/tb/tb_core_rv32i.sv and tb_core_p5.sv):
     <order> <pc> <insn> <rd> <rd_value>      -- all hex, no 0x prefix
 
 Exit codes:
