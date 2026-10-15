@@ -93,12 +93,16 @@ module fetch_unit #(
       end
     end else if (redirect_i) begin
       // Drop everything buffered, and remember how many responses are still
-      // owed so they can be discarded as they arrive. A response landing in
-      // this very cycle is already accounted for and must not be counted again.
+      // owed so they can be discarded as they arrive. Owed responses from an
+      // earlier redirect (discard_q) stay owed, and every request still in
+      // flight (pcq_cnt_q) joins them. A response landing in this very cycle is
+      // already accounted for: it belongs to exactly one of the two groups
+      // (the older, discard_q, first), so subtract it from that one only.
       fetch_pc_q <= redirect_pc_i;
       ibuf_cnt_q <= '0;
       pcq_cnt_q  <= '0;
-      discard_q  <= (resp && (pcq_cnt_q != 0)) ? (pcq_cnt_q - CW'(1)) : pcq_cnt_q;
+      discard_q  <= (discard_q - CW'(resp_drop ? 1 : 0))
+                  + (pcq_cnt_q - CW'(resp_keep ? 1 : 0));
     end else begin
       // ---- response ----
       if (resp_drop) begin

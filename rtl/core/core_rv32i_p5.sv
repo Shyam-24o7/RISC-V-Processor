@@ -441,7 +441,7 @@ module core_rv32i_p5
   // prefetched - those words may be stale.
   logic fence_i_mem, fence_i_done;
   assign fence_i_mem  = ex_mem_q.valid && ex_mem_q.dec.is_fence_i;
-  assign fence_i_done = fence_i_mem && flush_done_i;
+  assign fence_i_done = fence_i_mem && flush_done_i && !trap_taken;
   assign flush_req_o  = fence_i_mem;
 
   assign stall_mem  = (mem_op && !data_ready_i) || (fence_i_mem && !flush_done_i);

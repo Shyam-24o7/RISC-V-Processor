@@ -3,7 +3,7 @@
 // still in flight - that is where a prefetch buffer silently delivers
 // instructions from the path the core has abandoned.
 module tb_fetch_unit;
-  localparam int LAT   = 2;      // response arrives LAT cycles after the request
+  localparam int LAT   = 3;      // response arrives LAT cycles after the request
   localparam int DEPTH = 4;
 
   logic clk = 0, rst_n = 0;
@@ -122,6 +122,17 @@ module tb_fetch_unit;
     @(negedge clk); redirect = 0;
     take(32'h0000_4000);
     take(32'h0000_4004);
+
+    // ---- back-to-back redirects with responses still owed ----
+    // The first redirect leaves responses to discard; the second arrives before
+    // they have landed and must not forget them. Stale data would be paired
+    // with the new requests, and the payload check would catch it.
+    @(negedge clk); redirect = 1; redirect_pc = 32'h0000_5000;
+    @(negedge clk); redirect_pc = 32'h0000_6000;
+    @(negedge clk); redirect = 0;
+    take(32'h0000_6000);
+    take(32'h0000_6004);
+    take(32'h0000_6008);
 
     if (errors == 0) $display("PASS tb_fetch_unit");
     else             $fatal(1, "%0d failures", errors);
