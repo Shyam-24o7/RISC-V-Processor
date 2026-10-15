@@ -172,11 +172,11 @@ module core_rv32i
   assign csr_writes = (dec.funct3 == F3_CSRRW) || (dec.funct3 == F3_CSRRWI) ||
                       (dec.rs1_addr != 5'd0);
 
-  // csr_we is WRITE INTENT and must NOT be gated by trap_taken. Gating it here
-  // closes a combinational loop:
-  //   trap_taken -> csr_we -> csr_illegal -> illegal_insn -> trap_taken
-  // csr_file suppresses the write instead: its always_ff gives trap_i priority.
-  assign csr_we = dec.is_csr && csr_writes && !core_stall;
+  // Pure write INTENT: no trap and no stall term. illegal_o is computed from
+  // this, and core_stall depends on trap_taken, so either term closes a loop
+  // (trap_taken -> core_stall -> csr_we -> csr_illegal -> trap_taken).
+  // csr_file applies the stall to the actual update through stall_i.
+  assign csr_we = dec.is_csr && csr_writes;
 
   logic insn_retired;
 
@@ -184,9 +184,9 @@ module core_rv32i
     .clk_i(clk_i), .rst_ni(rst_ni),
     .addr_i(dec.imm[11:0]), .wdata_i(csr_wdata), .we_i(csr_we),
     .rdata_o(csr_rdata), .illegal_o(csr_illegal),
-    .trap_i(trap_taken && !core_stall), .trap_cause_i(trap_cause), .trap_pc_i(pc_q),
-    .trap_val_i(trap_val), .mret_i(dec.is_mret && !trap_taken && !core_stall),
-    .tvec_o(mtvec), .epc_o(mepc), .insn_retired_i(insn_retired)
+    .trap_i(trap_taken), .trap_cause_i(trap_cause), .trap_pc_i(pc_q),
+    .trap_val_i(trap_val), .mret_i(dec.is_mret && !trap_taken),
+    .tvec_o(mtvec), .epc_o(mepc), .insn_retired_i(insn_retired), .stall_i(core_stall)
   );
 
   // ---- Traps --------------------------------------------------------------

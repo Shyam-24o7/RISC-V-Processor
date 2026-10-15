@@ -30,7 +30,12 @@ module csr_file
   output logic [31:0] tvec_o,
   output logic [31:0] epc_o,
 
-  input  logic        insn_retired_i
+  input  logic        insn_retired_i,
+
+  // High while the instruction at the CSR stage cannot complete. Gates every
+  // state update, and deliberately never illegal_o: legality is decided from
+  // write INTENT, so the stall can depend on the trap decision without a loop.
+  input  logic        stall_i
 );
 
   logic [31:0] mstatus_q, mtvec_q, mepc_q, mcause_q, mtval_q,
@@ -56,6 +61,10 @@ module csr_file
   logic wr_mcycle, wr_minstret;
 
   logic exists, writable;
+  logic do_we, do_trap, do_mret;
+  assign do_we   = we_i && writable && !stall_i;
+  assign do_trap = trap_i && !stall_i;
+  assign do_mret = mret_i && !stall_i;
   always_comb begin
     exists   = 1'b1;
     writable = 1'b1;
@@ -88,9 +97,9 @@ module csr_file
   assign illegal_o = !exists || (we_i && !writable);
 
   // Mirrors the guard on the write branch below: trap and mret take priority.
-  assign wr_mcycle   = we_i && writable && !trap_i && !mret_i &&
+  assign wr_mcycle   = do_we && !do_trap && !do_mret &&
                        ((addr_i == CSR_MCYCLE)   || (addr_i == CSR_MCYCLEH));
-  assign wr_minstret = we_i && writable && !trap_i && !mret_i &&
+  assign wr_minstret = do_we && !do_trap && !do_mret &&
                        ((addr_i == CSR_MINSTRET) || (addr_i == CSR_MINSTRETH));
 
   always_comb begin
@@ -129,20 +138,18 @@ module csr_file
       if (insn_retired_i && !mcountinhibit_q[2] && !wr_minstret)
         minstret_q <= minstret_q + 64'd1;
 
-      // Trap entry outranks a CSR write in the same cycle. That ordering is
-      // load-bearing: it lets the core drive we_i as pure write INTENT, which
-      // is what breaks the loop trap_taken -> csr_we -> illegal_o ->
-      // illegal_insn -> trap_taken.
-      if (trap_i) begin
+      // Trap entry outranks a CSR write in the same cycle, so the core can
+      // drive we_i as pure write intent.
+      if (do_trap) begin
         mepc_q              <= trap_pc_i;
         mcause_q            <= trap_cause_i;
         mtval_q             <= trap_val_i;
         mstatus_q[MPIE_BIT] <= mstatus_q[MIE_BIT];  // push interrupt enable
         mstatus_q[MIE_BIT]  <= 1'b0;                // and disable interrupts
-      end else if (mret_i) begin
+      end else if (do_mret) begin
         mstatus_q[MIE_BIT]  <= mstatus_q[MPIE_BIT]; // pop it back
         mstatus_q[MPIE_BIT] <= 1'b1;
-      end else if (we_i && writable) begin
+      end else if (do_we) begin
         unique case (addr_i)
           CSR_MSTATUS:       mstatus_q  <= wdata_i;
           CSR_MIE:           mie_q      <= wdata_i;

@@ -5,7 +5,7 @@ module tb_csr_file;
   logic [11:0] addr;
   logic [31:0] wdata, rdata;
   logic        we, illegal;
-  logic        trap, mret, retired;
+  logic        trap, mret, retired, stall;
   logic [31:0] trap_cause, trap_pc, trap_val, tvec, epc, before_val;
   int          errors = 0;
 
@@ -17,7 +17,7 @@ module tb_csr_file;
     .rdata_o(rdata), .illegal_o(illegal),
     .trap_i(trap), .trap_cause_i(trap_cause), .trap_pc_i(trap_pc),
     .trap_val_i(trap_val), .mret_i(mret),
-    .tvec_o(tvec), .epc_o(epc), .insn_retired_i(retired)
+    .tvec_o(tvec), .epc_o(epc), .insn_retired_i(retired), .stall_i(stall)
   );
 
   task automatic wr(logic [11:0] a, logic [31:0] d);
@@ -33,7 +33,7 @@ module tb_csr_file;
   endtask
 
   initial begin
-    we=0; trap=0; mret=0; retired=0; addr=0; wdata=0;
+    we=0; trap=0; mret=0; retired=0; addr=0; wdata=0; stall=0;
     trap_cause=0; trap_pc=0; trap_val=0;
     repeat (2) @(negedge clk); rst_n = 1;
 
@@ -133,6 +133,22 @@ module tb_csr_file;
     if (rdata[8] !== 1'b1) begin
       $display("FAIL misa does not advertise I: 0x%08x", rdata); errors++;
     end
+
+    // ---- stall suppresses every update, never legality ----
+    wr(CSR_MSCRATCH, 32'h1111_1111);
+    @(negedge clk); addr = CSR_MSCRATCH; wdata = 32'h2222_2222; we = 1; stall = 1;
+    #1 chk("illegal_o ignores stall", illegal, 1'b0);
+    @(negedge clk); we = 0; stall = 0;
+    #1 chk("write during stall suppressed", rdata, 32'h1111_1111);
+
+    @(negedge clk); addr = CSR_MVENDORID; wdata = 32'h1; we = 1; stall = 1;
+    #1 chk("read-only write is illegal even when stalled", illegal, 1'b1);
+    @(negedge clk); we = 0; stall = 0;
+
+    before_val = epc;
+    @(negedge clk); trap = 1; trap_pc = 32'hABCD_0000; trap_cause = 32'd2; stall = 1;
+    @(negedge clk); trap = 0; stall = 0;
+    #1 chk("trap during stall suppressed", epc, before_val);
 
     if (errors == 0) $display("PASS tb_csr_file");
     else             $fatal(1, "%0d failures", errors);

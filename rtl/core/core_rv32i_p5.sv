@@ -356,9 +356,10 @@ module core_rv32i_p5
                       (ex_mem_q.dec.funct3 == F3_CSRRWI) ||
                       (ex_mem_q.dec.rs1_addr != 5'd0);
 
-  // Pure write INTENT, exactly as in the single-cycle core: gating this with
-  // the trap decision would close a combinational loop through csr_illegal.
-  assign csr_we = ex_mem_q.valid && ex_mem_q.dec.is_csr && csr_writes && !stall_mem;
+  // Pure write INTENT. No stall or trap term: illegal_o is computed from this,
+  // and the stall depends on the trap decision, so any such term closes a loop.
+  // csr_file applies the stall to the actual update through stall_i.
+  assign csr_we = ex_mem_q.valid && ex_mem_q.dec.is_csr && csr_writes;
 
   // ---- Exception classification ----
   // Priority matches the single-cycle core. For a fetch misalignment the
@@ -436,10 +437,10 @@ module core_rv32i_p5
     .clk_i(clk_i), .rst_ni(rst_ni),
     .addr_i(ex_mem_q.dec.imm[11:0]), .wdata_i(csr_wdata), .we_i(csr_we),
     .rdata_o(csr_rdata), .illegal_o(csr_illegal),
-    .trap_i(trap_taken && !stall_mem), .trap_cause_i(trap_cause),
+    .trap_i(trap_taken), .trap_cause_i(trap_cause),
     .trap_pc_i(ex_mem_q.pc),
-    .trap_val_i(trap_tval), .mret_i(mret_taken && !stall_mem),
-    .tvec_o(mtvec), .epc_o(mepc), .insn_retired_i(wb_valid)
+    .trap_val_i(trap_tval), .mret_i(mret_taken),
+    .tvec_o(mtvec), .epc_o(mepc), .insn_retired_i(wb_valid), .stall_i(stall_mem)
   );
 
   // ---- Load data extraction ----
