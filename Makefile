@@ -90,7 +90,7 @@ lint:
 .PHONY: tb
 # Usage: make tb TB=tb_alu
 tb: lint
-	@$(IN_DOCKER) bash -c 'set -euo pipefail; rm -f /build/$(TB)/$(TB); \
+	@$(IN_DOCKER) bash -c 'set -euo pipefail; rm -rf /build/$(TB); \
 	   verilator $(VFLAGS) --top-module $(TB) \
 	   --Mdir /build/$(TB) -o $(TB) \
 	   $(RTL_SRCS) verif/tb/$(TB).sv \
@@ -122,7 +122,7 @@ cosim: lint
 	    --log=/build/prog/$(PROG).spike /build/prog/$(PROG).elf >/dev/null 2>&1; \
 	  test -s /build/prog/$(PROG).spike || \
 	    { echo "FATAL: spike wrote no commit log - refusing to compare against a stale one"; exit 1; }; \
-	  rm -f /build/$(CORE_TB)/$(CORE_TB); \
+	  rm -rf /build/$(CORE_TB); \
 	  verilator $(VFLAGS) --top-module $(CORE_TB) --Mdir /build/$(CORE_TB) \
 	    -o $(CORE_TB) $(RTL_SRCS) verif/tb/$(CORE_TB).sv; \
 	  /build/$(CORE_TB)/$(CORE_TB) +hex=/build/prog/$(PROG).hex \
@@ -148,7 +148,7 @@ fetch-tests:
 #        make regress FILTER=add (subset)
 regress: lint
 	@$(IN_DOCKER) bash -c 'set -euo pipefail; \
-	  rm -f /build/$(CORE_TB)/$(CORE_TB); \
+	  rm -rf /build/$(CORE_TB); \
 	  verilator $(VFLAGS) --top-module $(CORE_TB) --Mdir /build/$(CORE_TB) \
 	    -o $(CORE_TB) $(RTL_SRCS) verif/tb/$(CORE_TB).sv; \
 	  python3 scripts/run_regress.py --sim /build/$(CORE_TB)/$(CORE_TB) \
@@ -191,7 +191,7 @@ cosim-lat: lint
 	    --log=/build/prog/$(PROG).spike /build/prog/$(PROG).elf >/dev/null 2>&1; \
 	  test -s /build/prog/$(PROG).spike || \
 	    { echo "FATAL: spike wrote no commit log"; exit 1; }; \
-	  rm -f /build/$(CORE_TB)_$(LAT)/$(CORE_TB); \
+	  rm -rf /build/$(CORE_TB)_$(LAT); \
 	  verilator $(VFLAGS) -GLATENCY=$(LAT) --top-module $(CORE_TB) \
 	    --Mdir /build/$(CORE_TB)_$(LAT) -o $(CORE_TB) \
 	    $(RTL_SRCS) verif/tb/$(CORE_TB).sv; \
