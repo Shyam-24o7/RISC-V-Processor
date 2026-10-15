@@ -1,5 +1,6 @@
-/* Exercises the ALU, loads and stores, branches and the M extension. No I/O:
-   the testbench compares register traces against Spike, not printed output. */
+/* Exercises the ALU, loads and stores, branches, and multiply/divide through
+   libgcc (RV32I has no M extension). No I/O: the testbench compares register
+   traces against Spike, not printed output. */
 int main(void) {
     volatile int arr[8];
     int sum = 0;

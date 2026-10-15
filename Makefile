@@ -144,7 +144,7 @@ fetch-tests:
 	    https://github.com/riscv-software-src/riscv-tests verif/prog/riscv-tests
 
 .PHONY: regress
-# Usage: make regress            (all rv32ui/um/mi p-mode tests)
+# Usage: make regress            (all rv32ui and rv32mi p-mode tests)
 #        make regress FILTER=add (subset)
 regress: lint
 	@$(IN_DOCKER) bash -c 'set -euo pipefail; \
@@ -161,7 +161,7 @@ regress: lint
 VIVADO := /mnt/d/Vivado/2022.2/bin/vivado.bat
 
 .PHONY: synth results
-# Usage: make synth CORE=core_sc
+# Usage: make synth CORE=core_rv32i_p5
 synth:
 	@mkdir -p results/raw
 	$(VIVADO) -mode batch -source scripts/synth.tcl -tclargs $(CORE) -nojournal -nolog
@@ -171,16 +171,7 @@ synth:
 results:
 	@python3 scripts/collect_results.py
 
-.PHONY: fetch-formal formal
-fetch-formal:
-	@test -d verif/formal/riscv-formal || \
-	  git clone --depth 1 https://github.com/YosysHQ/riscv-formal verif/formal/riscv-formal
-
-# Usage: make formal CORE=core_sc
-formal: fetch-formal
-	@$(IN_DOCKER) bash -c 'sby -f -d /build/formal_$(CORE) verif/formal/$(CORE).sby'
-
-# Memory-latency sweep. LAT is the access latency in cycles, applied to BOTH
+# Memory-latency sweep. LAT is the number of wait states (an access takes LAT+1 cycles), applied to BOTH
 # the instruction and data ports, and set at elaboration with -G.
 #   make cosim-lat PROG=hello CORE_TB=tb_core_p5_lat LAT=2
 LAT ?= 1

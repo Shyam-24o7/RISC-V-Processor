@@ -18,4 +18,7 @@ vivado*.str
 # the project is comparing them across phases months apart.
 verif/prog/riscv-tests/
 build_vivado/
-verif/formal/riscv-formal/
+
+# Local tool working directories
+.superpowers/
+.pytest_cache/

@@ -1,15 +1,15 @@
 # RV32I Processor
 
-A single-cycle RISC-V RV32I processor in SystemVerilog, verified instruction-by-instruction
-against the reference ISA simulator and synthesised for a Xilinx Zynq UltraScale+ FPGA.
+A five-stage pipelined RISC-V RV32I processor in SystemVerilog, verified
+instruction-by-instruction against the reference ISA simulator (Spike) and
+synthesised for a Xilinx Zynq UltraScale+ FPGA. A single-cycle core is kept
+alongside it as the baseline.
 
 | | |
 |---|---|
 | **ISA** | RV32I + Zicsr + machine-mode traps |
-| **Microarchitecture** | Single-cycle, IPC = 1.000 |
-| **Target** | AMD/Xilinx XCK26 (Kria K26 SOM / KV260) |
-| **Fmax** | 215.5 MHz |
-| **Area** | 2094 LUT · 1438 FF · 0 DSP · 0 BRAM |
+| **Cores** | `core_rv32i_p5` (5-stage pipeline, decoupled fetch), `core_rv32i` (single-cycle) |
+| **Target** | AMD/Xilinx XCK26 (Kria K26 SOM / KV260), synthesis only |
 | **Compliance** | 54/58 applicable riscv-tests |
 | **Co-simulation** | Matches Spike instruction-for-instruction |
 
@@ -336,44 +336,10 @@ fails the build — and it reports if a known gap *starts* passing, so the list 
 
 ---
 
-## 5.1 Memory latency, and why the front end decides the answer
+## 5.1 Memory latency
 
-The most useful result in this project came from a prediction that turned out
-wrong. With ideal memory the pipelined core measures *worse* than the
-single-cycle one in cycles, and the obvious explanation is that `magic_mem`
-hides the cost of memory. Testing that by sweeping real latency disproved it —
-the pipeline stayed about 29% worse at **every** latency:
-
-| Wait states | Single-cycle | Pipeline (no fetch buffer) |
-|---|---|---|
-| 0 | 297 | 422 |
-| 1 | 594 | 765 |
-| 2 | 891 | 1147 |
-| 4 | 1485 | 1911 |
-
-A penalty that neither grows nor shrinks is not a memory effect. The real cause
-was structural: an instruction-fetch stall froze the entire pipeline, so fetch
-latency was serialised per instruction exactly as on a single-cycle core.
-**Separate pipeline stages cannot overlap what the front end refuses to
-decouple.**
-
-Fixing it took two changes, and neither works alone — a prefetch buffer cannot
-fill from a memory that serves one request at a time, and a pipelined memory
-port is useless with nowhere to put the results:
-
-| Wait states | Single-cycle | Pipeline + fetch buffer | Speedup |
-|---|---|---|---|
-| 0 | 297 | 484 | 0.61x |
-| 1 | 594 | **506** | **1.17x** |
-| 2 | 891 | **590** | **1.51x** |
-| 4 | 1485 | **805** | **1.84x** |
-
-The margin *grows* with latency, which is the signature of genuine overlap
-rather than a constant offset. At zero latency the buffer costs 62 cycles,
-because it registers its response so an instruction takes one extra cycle to
-reach decode — pure overhead when memory is free. That is exactly why a
-comparison run only against ideal memory can never show a pipeline in a fair
-light.
+The cycle-count measurements behind the fetch unit (and the branch-prediction
+experiment that was reverted) are in `results/experiments.md`.
 
 ## 6. Results
 
@@ -385,18 +351,6 @@ light.
 Both IPC figures are for **ideal memory**, the one case where the pipeline's prefetch
 buffer is pure overhead. Under any real memory latency the ranking flips (section 5.1),
 so do not read IPC × Fmax from this table as the pipeline's real-world throughput.
-
-**Why the pipeline is only 266 MHz.** Five stages do not give five times the frequency.
-The limit is the longest single stage, and in EX that stage does forwarding, a 32-bit add,
-a 32-bit compare and the branch redirect in one cycle. About 65% of the path delay is
-routing, and a synthesis-only estimate on a low-power (-2LV) part is conservative. The
-exception priority chain and its 32-bit `tval` select used to sit at the end of that path;
-moving them to MEM, where every input is already registered, took the core from 260.2 to
-266.2 MHz. A follow-up change (taking the CSR legality decode off the memory-stall path)
-was behaviourally identical but *lost* 14 MHz once synthesis restructured the design, so
-it was reverted. Both attempts are recorded in
-`results/raw/core_rv32i_p5_timing_study.json`. The critical path is now the EX branch
-compare feeding the fetch-unit redirect.
 
 **On reading these numbers.** IPC alone is misleading: a single-cycle datapath buys its
 perfect IPC with a slow clock. MIPS is only comparable *within* one ISA, because it counts
@@ -420,7 +374,6 @@ rtl/
 verif/
   tb/         one self-checking testbench per module, plus the trace-dumping top
   prog/       crt0.S, linker script, C benchmark, smoke program
-  formal/     riscv-formal harness configuration
 scripts/
   compare_trace.py    RVFI vs Spike commit-log diff  (+ its own unit tests)
   run_regress.py      riscv-tests runner, dual-gated
