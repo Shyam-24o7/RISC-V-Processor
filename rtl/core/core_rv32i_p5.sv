@@ -113,6 +113,7 @@ module core_rv32i_p5
   logic        flush_trap;
   logic [31:0] redirect_pc;
   logic        redirect_valid;
+  logic [31:0] fwd_rs1, fwd_rs2;   // EX operands after forwarding
 
   // ======================================================================
   // IF - decoupled instruction fetch
@@ -185,11 +186,18 @@ module core_rv32i_p5
                          (id_ex_q.dec.rd_addr == dec_id.rs2_addr));
 
   // ---- ID/EX ----
+  // While MEM is stalled the instruction in EX stays put, but its forwarding
+  // sources do not: MEM/WB retires on the first stall edge and becomes a bubble.
+  // A value the EX operand was taking from MEM/WB would then vanish, and the
+  // operand would fall back to the stale register read from ID. So the held
+  // operands re-latch their forwarded values every stall cycle; whatever was
+  // being forwarded is captured before its source leaves the pipe.
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       id_ex_q <= '0;
     end else if (stall_mem) begin
-      id_ex_q <= id_ex_q;                          // frozen behind MEM
+      id_ex_q.rs1_data <= fwd_rs1;                 // frozen behind MEM,
+      id_ex_q.rs2_data <= fwd_rs2;                 // operands kept current
     end else if (flush_trap || flush_branch || stall_ld_use) begin
       id_ex_q <= '0;                               // insert a bubble
     end else begin
@@ -222,7 +230,6 @@ module core_rv32i_p5
   assign mem_wb_fwd_ok = mem_wb_q.valid && mem_wb_q.rd_we &&
                          (mem_wb_q.rd_addr != 5'd0);
 
-  logic [31:0] fwd_rs1, fwd_rs2;
   always_comb begin
     if      (ex_mem_fwd_ok && (ex_mem_q.dec.rd_addr == id_ex_q.dec.rs1_addr))
       fwd_rs1 = ex_mem_q.alu_result;

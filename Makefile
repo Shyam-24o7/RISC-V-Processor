@@ -152,10 +152,14 @@ fetch-tests:
 .PHONY: regress
 # Usage: make regress            (all rv32ui and rv32mi p-mode tests)
 #        make regress FILTER=add (subset)
+#        make regress CORE_TB=tb_core_p5_lat LAT=2  (wait states, latency testbenches only)
+# LAT is passed as -GLATENCY only when given explicitly; otherwise the testbench's
+# own default applies, so testbenches without a LATENCY parameter are unaffected.
+REGRESS_GFLAGS = $(if $(filter file undefined,$(origin LAT)),,-GLATENCY=$(LAT))
 regress: lint
 	@$(IN_DOCKER) bash -c 'set -euo pipefail; \
 	  rm -rf /build/$(CORE_TB); \
-	  verilator $(VFLAGS) --top-module $(CORE_TB) --Mdir /build/$(CORE_TB) \
+	  verilator $(VFLAGS) $(REGRESS_GFLAGS) --top-module $(CORE_TB) --Mdir /build/$(CORE_TB) \
 	    -o $(CORE_TB) $(RTL_SRCS) verif/tb/$(CORE_TB).sv; \
 	  python3 scripts/run_regress.py --sim /build/$(CORE_TB)/$(CORE_TB) \
 	    --filter "$(FILTER)"'
