@@ -77,15 +77,18 @@ VFLAGS := --binary --timing --assert -Wno-fatal $(VINC)
 
 # Every synthesisable top, linted with all warnings fatal. A task that adds a
 # top-level module adds it here.
-LINT_TOPS := core_rv32i core_rv32i_p5
+LINT_TOPS := core_rv32i core_rv32i_p5 main_mem
+
+# A top that does not import rv32_pkg is linted from its own sources only:
+# otherwise every package constant is reported unused for that top.
+LINT_SRCS_main_mem := rtl/mem/main_mem.sv
 
 .PHONY: lint
 lint:
 	@$(IN_DOCKER) bash -c 'set -euo pipefail; \
-	  for t in $(LINT_TOPS); do \
-	    echo "lint $$t"; \
-	    verilator --lint-only -Wall $(VINC) --top-module $$t $(RTL_SRCS); \
-	  done; echo "lint clean"'
+	  $(foreach t,$(LINT_TOPS),echo "lint $(t)"; \
+	    verilator --lint-only -Wall $(VINC) --top-module $(t) $(or $(LINT_SRCS_$(t)),$(RTL_SRCS)); ) \
+	  echo "lint clean"'
 
 .PHONY: tb
 # Usage: make tb TB=tb_alu
