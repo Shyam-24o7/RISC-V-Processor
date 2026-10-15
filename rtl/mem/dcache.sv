@@ -71,6 +71,7 @@ module dcache #(
   logic [TW-1:0]   vtag_q;                // line being written back
   logic [127:0]    vdata_q;
   logic            reread_q;
+  logic            replay_q;              // last cycle was REPLAY
   logic [CW-1:0]   fl_cnt_q;
 
   logic [IW-1:0] fl_set;
@@ -131,7 +132,9 @@ module dcache #(
   assign rdata_o  = hit_line[{addr_i[3:2], 5'b0} +: 32];
 
   assign flush_done_o = (state_q == S_FL_DONE);
-  assign stat_hit_o   = hit;
+  // A miss completes through the hit path after REPLAY; that completion is
+  // part of the miss, not a hit.
+  assign stat_hit_o   = hit && !replay_q;
   assign stat_miss_o  = miss;
 
   // ---- line port ----
@@ -161,9 +164,11 @@ module dcache #(
       vtag_q     <= '0;
       vdata_q    <= '0;
       reread_q   <= 1'b0;
+      replay_q   <= 1'b0;
       fl_cnt_q   <= '0;
     end else begin
       reread_q <= 1'b0;
+      replay_q <= (state_q == S_REPLAY);
       unique case (state_q)
         S_RUN: begin
           // Same-set collision between this store's write and the next read.
@@ -224,5 +229,19 @@ module dcache #(
       endcase
     end
   end
+
+`ifndef SYNTHESIS
+  // The pre_addr contract is a correctness requirement: a lookup against the
+  // wrong set can false-hit, or write back another set's line on a miss.
+  // Check that every lookup sees the arrays read at its own set.
+  logic [IW-1:0] rd_idx_q;
+  always_ff @(posedge clk_i) begin
+    rd_idx_q <= rd_idx;
+    if (rst_ni && lookup)
+      assert (rd_idx_q == idx)
+        else $error("dcache: lookup set %0d but arrays were read at set %0d - pre_addr contract broken",
+                    idx, rd_idx_q);
+  end
+`endif
 
 endmodule

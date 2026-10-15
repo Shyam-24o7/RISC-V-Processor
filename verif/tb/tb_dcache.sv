@@ -130,6 +130,18 @@ module tb_dcache;
     end
     repeat (2) @(negedge clk); rst_n = 1;
 
+    // ---- counters: a miss's completion is not also a hit ----
+    push(1, 0, 4'b1111, A(3, 70, 0), 0);  // cold set
+    run_ops();
+    if (hits != 0 || misses != 1) begin
+      $display("FAIL cold load counted %0d hits, %0d misses (want 0, 1)", hits, misses); errors++;
+    end
+    push(1, 0, 4'b1111, A(3, 70, 0), 0);  // same line again
+    run_ops();
+    if (hits != 1 || misses != 1) begin
+      $display("FAIL repeated load counted %0d hits, %0d misses (want 1, 1)", hits, misses); errors++;
+    end
+
     // ---- store, then load the same set on the very next access ----
     // The load's array read happens on the same edge as the store's write.
     push(1, 1, 4'b1111, A(0, 5, 0), 32'hAAAA_0001);
