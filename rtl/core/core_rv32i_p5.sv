@@ -39,6 +39,7 @@ module core_rv32i_p5
   output logic [31:0] instr_addr_o,
   input  logic [31:0] instr_rdata_i,
   input  logic        instr_ready_i,
+  input  logic        instr_gnt_i,
 
   output logic        data_req_o,
   output logic [31:0] data_addr_o,
@@ -47,6 +48,11 @@ module core_rv32i_p5
   output logic [31:0] data_wdata_o,
   input  logic [31:0] data_rdata_i,
   input  logic        data_ready_i,
+  // The data cache reads its arrays one edge early, at this address.
+  output logic [31:0] data_pre_addr_o,
+  // FENCE.I handshake with the caches.
+  output logic        flush_req_o,
+  input  logic        flush_done_i,
 
   // RVFI retirement port, emitted at WB so retirement stays in program order.
   output logic        rvfi_valid_o,
@@ -124,6 +130,7 @@ module core_rv32i_p5
     .clk_i(clk_i), .rst_ni(rst_ni),
     .redirect_i(redirect_valid), .redirect_pc_i(redirect_pc),
     .instr_req_o(instr_req_o), .instr_addr_o(instr_addr_o),
+    .instr_gnt_i(instr_gnt_i),
     .instr_rdata_i(instr_rdata_i), .instr_ready_i(instr_ready_i),
     .insn_valid_o(if_valid), .insn_pc_o(if_pc), .insn_o(if_insn),
     .insn_ready_i(if_pop)
@@ -426,7 +433,23 @@ module core_rv32i_p5
                       (ex_mem_q.dec.is_load || ex_mem_q.dec.is_store) &&
                       !trap_taken;
   assign data_req_o = mem_op;
-  assign stall_mem  = mem_op && !data_ready_i;
+
+  // ---- FENCE.I ----
+  // Held in MEM until both caches report done: the data cache has written back
+  // every dirty line and the instruction cache is invalidated. It then
+  // redirects fetch to the next instruction, discarding anything already
+  // prefetched - those words may be stale.
+  logic fence_i_mem, fence_i_done;
+  assign fence_i_mem  = ex_mem_q.valid && ex_mem_q.dec.is_fence_i;
+  assign fence_i_done = fence_i_mem && flush_done_i;
+  assign flush_req_o  = fence_i_mem;
+
+  assign stall_mem  = (mem_op && !data_ready_i) || (fence_i_mem && !flush_done_i);
+
+  // The data cache reads its arrays on the edge BEFORE an access reaches MEM,
+  // so it needs that access's address now: the one leaving EX if the pipe
+  // advances, or the held one if MEM is stalled.
+  assign data_pre_addr_o = stall_mem ? ex_mem_q.mem_addr : mem_addr_ex;
 
   assign data_we_o = ex_mem_q.valid && ex_mem_q.dec.is_store &&
                      !trap_taken;
@@ -468,14 +491,15 @@ module core_rv32i_p5
   end
 
   // ---- Redirect and flush control ----
-  // Trap outranks mret outranks branch: an older instruction's decision wins.
-  assign flush_trap = trap_taken || mret_taken;
+  // Trap outranks mret outranks FENCE.I outranks branch: an older instruction's decision wins.
+  assign flush_trap = trap_taken || mret_taken || fence_i_done;
   assign flush_branch = take_branch_ex && !flush_trap;
 
   always_comb begin
     redirect_valid = 1'b1;
     if      (trap_taken)     redirect_pc = mtvec;
     else if (mret_taken)     redirect_pc = mepc;
+    else if (fence_i_done)   redirect_pc = ex_mem_q.pc + 32'd4;
     else if (take_branch_ex) redirect_pc = branch_target_ex;
     else begin
       redirect_pc    = '0;

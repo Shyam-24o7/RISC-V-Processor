@@ -65,6 +65,7 @@ module tb_rv32_pkg;
 
     // ---- funct3: Zicsr (SYSTEM opcode) ----
     chk("F3_PRIV",      F3_PRIV,         3'b000);
+    chk("F3_FENCE_I",   F3_FENCE_I,      3'b001);
     chk("F3_CSRRW",     F3_CSRRW,        3'b001);
     chk("F3_CSRRS",     F3_CSRRS,        3'b010);
     chk("F3_CSRRC",     F3_CSRRC,        3'b011);

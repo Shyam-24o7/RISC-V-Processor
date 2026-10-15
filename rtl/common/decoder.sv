@@ -110,8 +110,11 @@ module decoder
                           (funct3 == F3_ADD_SUB || funct3 == F3_SR));
       end
       OP_FENCE: begin
-        // FENCE and FENCE.I retire as NOPs on a single-hart in-order core:
-        // there is nothing to order against.
+        // FENCE is a no-op on a single hart with blocking caches: every memory
+        // access is complete before the next begins. FENCE.I is not - with
+        // separate caches, stored instructions must reach memory and the
+        // instruction cache must forget its stale copy.
+        dec_o.is_fence_i = (funct3 == F3_FENCE_I);
       end
       OP_SYSTEM: begin
         if (funct3 == F3_PRIV) begin

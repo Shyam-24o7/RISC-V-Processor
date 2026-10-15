@@ -13,6 +13,7 @@ module tb_fetch_unit;
   logic        redirect;
   logic [31:0] redirect_pc;
   logic        ireq, iready;
+  logic        gnt;
   logic [31:0] iaddr, irdata;
   logic        ivalid, iaccept;
   logic [31:0] ipc, iinsn;
@@ -21,6 +22,7 @@ module tb_fetch_unit;
     .clk_i(clk), .rst_ni(rst_n),
     .redirect_i(redirect), .redirect_pc_i(redirect_pc),
     .instr_req_o(ireq), .instr_addr_o(iaddr),
+    .instr_gnt_i(gnt),
     .instr_rdata_i(irdata), .instr_ready_i(iready),
     .insn_valid_o(ivalid), .insn_pc_o(ipc), .insn_o(iinsn),
     .insn_ready_i(iaccept)
@@ -35,7 +37,7 @@ module tb_fetch_unit;
     if (!rst_n) begin
       for (int k = 0; k < LAT; k++) begin vpipe[k] <= 0; dpipe[k] <= 0; end
     end else begin
-      vpipe[0] <= ireq;
+      vpipe[0] <= ireq && gnt;
       dpipe[0] <= iaddr;
       for (int k = 1; k < LAT; k++) begin
         vpipe[k] <= vpipe[k-1];
@@ -45,6 +47,10 @@ module tb_fetch_unit;
   end
   assign iready = vpipe[LAT-1];
   assign irdata = dpipe[LAT-1];
+
+  // Back-pressure: the memory refuses a quarter of all cycles, as a cache does
+  // while it refills. A refused request must not be counted as in flight.
+  always @(negedge clk) gnt = ($urandom_range(0, 3) != 0);
 
   task automatic chk(string name, logic [31:0] got, exp);
     if (got !== exp) begin
@@ -74,7 +80,7 @@ module tb_fetch_unit;
   endtask
 
   initial begin
-    redirect = 0; redirect_pc = 0; iaccept = 0;
+    gnt = 1; redirect = 0; redirect_pc = 0; iaccept = 0;
     repeat (2) @(negedge clk); rst_n = 1;
 
     // ---- sequential fetch ----

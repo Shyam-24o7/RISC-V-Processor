@@ -24,6 +24,7 @@ package rv32_pkg;
   parameter logic [2:0] F3_LB = 3'b000, F3_LH = 3'b001, F3_LW = 3'b010,
                         F3_LBU= 3'b100, F3_LHU= 3'b101;
   parameter logic [2:0] F3_SB = 3'b000, F3_SH = 3'b001, F3_SW = 3'b010;
+  parameter logic [2:0] F3_FENCE_I = 3'b001;   // MISC-MEM: FENCE.I
   // Zicsr
   parameter logic [2:0] F3_PRIV = 3'b000,
                         F3_CSRRW=3'b001, F3_CSRRS=3'b010, F3_CSRRC=3'b011,
@@ -119,6 +120,7 @@ package rv32_pkg;
     logic        is_ecall;
     logic        is_ebreak;
     logic        is_mret;
+    logic        is_fence_i;   // flush data cache, invalidate instruction cache
     logic        illegal;
     logic [2:0]  funct3;
   } decoded_t;

@@ -92,6 +92,15 @@ module tb_decoder;
     insn = 32'hFFFFFFFF; #1; chk("garbage illegal",       dec.illegal, 1'b1);
     insn = 32'h00000013; #1; chk("nop is legal",          dec.illegal, 1'b0);
 
+    // ---- FENCE.I is flagged; plain FENCE is not ----
+    insn = 32'h0000100F; #1;                       // fence.i
+    chk("fence.i flagged",      dec.is_fence_i, 1'b1);
+    chk("fence.i legal",        dec.illegal,    1'b0);
+    chk("fence.i writes no rd", dec.rd_we,      1'b0);
+    insn = 32'h0FF0000F; #1;                       // fence iorw, iorw
+    chk("fence is not fence.i", dec.is_fence_i, 1'b0);
+    chk("fence legal",          dec.illegal,    1'b0);
+
     if (errors == 0) $display("PASS tb_decoder");
     else             $fatal(1, "%0d failures", errors);
     $finish;

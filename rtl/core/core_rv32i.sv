@@ -63,6 +63,10 @@ module core_rv32i
   decoded_t dec;
   decoder u_decoder (.insn_i(insn), .dec_o(dec));
 
+  // No caches on this core, so FENCE.I needs no action.
+  logic unused_fence_i;
+  assign unused_fence_i = dec.is_fence_i;
+
   // ---- Register file ------------------------------------------------------
   logic [31:0] rs1_data, rs2_data, rd_wdata;
   logic        rd_we;

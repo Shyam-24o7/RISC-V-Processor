@@ -28,6 +28,7 @@ module fetch_unit #(
   // Memory side
   output logic        instr_req_o,
   output logic [31:0] instr_addr_o,
+  input  logic        instr_gnt_i,     // the memory accepts the request this cycle
   input  logic [31:0] instr_rdata_i,
   input  logic        instr_ready_i,   // a response is valid this cycle
 
@@ -63,6 +64,11 @@ module fetch_unit #(
   assign can_issue    = ((pcq_cnt_q + ibuf_cnt_q) < CW'(DEPTH)) && !redirect_i;
   assign instr_req_o  = can_issue;
   assign instr_addr_o = fetch_pc_q;
+
+  // A request only counts once the memory has accepted it. Until then the
+  // address is simply presented again; nothing is queued as in flight.
+  logic issue;
+  assign issue = can_issue && instr_gnt_i;
 
   logic resp, resp_keep, resp_drop, pop;
   assign resp      = instr_ready_i;
@@ -108,15 +114,15 @@ module fetch_unit #(
       if (resp_keep) begin
         for (int k = 0; k < DEPTH-1; k++) pcq_q[k] <= pcq_q[k+1];
       end
-      if (can_issue) begin
+      if (issue) begin
         pcq_q[IW'(resp_keep ? (pcq_cnt_q - CW'(1)) : pcq_cnt_q)] <= fetch_pc_q;
         fetch_pc_q <= fetch_pc_q + 32'd4;
       end
 
       // The count moves by the difference when both happen at once.
-      if (can_issue && resp_keep)      pcq_cnt_q <= pcq_cnt_q;
-      else if (can_issue)              pcq_cnt_q <= pcq_cnt_q + CW'(1);
-      else if (resp_keep)              pcq_cnt_q <= pcq_cnt_q - CW'(1);
+      if (issue && resp_keep)      pcq_cnt_q <= pcq_cnt_q;
+      else if (issue)              pcq_cnt_q <= pcq_cnt_q + CW'(1);
+      else if (resp_keep)          pcq_cnt_q <= pcq_cnt_q - CW'(1);
 
       // ---- instruction buffer ----
       if (resp_keep && pop) begin
