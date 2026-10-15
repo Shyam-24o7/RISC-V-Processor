@@ -345,8 +345,8 @@ experiment that was reverted) are in `results/experiments.md`.
 
 | Core | IPC | Fmax (MHz) | LUT / FF / BRAM / DSP |
 |---|---|---|---|
-| RV32I single-cycle | 1.000 | 215.5 | 2094 / 1438 / 0 / 0 |
-| RV32I 5-stage pipeline | 0.612 | 266.2 | 2661 / 2431 / 0 / 0 |
+| RV32I single-cycle | 1.000 | 216.7 | 2123 / 1438 / 0 / 0 |
+| RV32I 5-stage pipeline | 0.612 | 259.0 | 2718 / 2446 / 0 / 0 |
 
 Both IPC figures are for **ideal memory**, the one case where the pipeline's prefetch
 buffer is pure overhead. Under any real memory latency the ranking flips (section 5.1),

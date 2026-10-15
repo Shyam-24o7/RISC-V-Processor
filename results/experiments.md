@@ -51,3 +51,14 @@ Reverted; a BTB in IF is the alternative that adds no depth to that path.
 
 Fmax 260.2 -> 266.2 MHz* on a loop-affected design; not meaningful until
 re-measured. The change itself is kept: it removes logic from EX.
+
+## 5. First loop-free synthesis (2026-10)
+
+| Core | Fmax (MHz) | LUT | FF |
+|---|---|---|---|
+| core_rv32i | 216.7 | 2123 | 1438 |
+| core_rv32i_p5 | 259.0 | 2718 | 2446 |
+
+Both reports show zero combinational loops. Previous loop-affected figures were
+215.5 MHz / 2094 LUT / 1438 FF (single-cycle) and 266.2 MHz / 2661 LUT / 2431 FF
+(pipeline).

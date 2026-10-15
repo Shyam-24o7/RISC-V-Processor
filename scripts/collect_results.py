@@ -40,11 +40,10 @@ purely because it executes far more instructions to compute the same answer -
 libgcc replaces one `div` with dozens of shift-and-subtract steps. Compare wall
 clock on identical source, never MIPS across different instruction sets.
 
-**Fmax here does not depend on the constraint it was measured against.** That was
-checked rather than assumed: the pipelined core synthesised at a 4.0 ns target
-(slack +0.021) and at 3.0 ns (slack -0.979) reports the same 3.979 ns achieved
-period both times. Vivado reports the true worst-case path whether or not the
-target was met, so `Fmax = 1 / (target - WNS)` holds in either direction.
+**Fmax is derived from slack:** `Fmax = 1 / (target - WNS)`. Synthesis fails
+outright if the timing report shows any combinational loop, because Vivado
+would otherwise cut the loop arbitrarily and the number would mean nothing.
+These are post-synthesis estimates, not placed-and-routed results.
 
 **The single-cycle Fmax is optimistic in a way the pipeline's is not.**
 `magic_mem` is excluded from synthesis, so instruction fetch and data access sit

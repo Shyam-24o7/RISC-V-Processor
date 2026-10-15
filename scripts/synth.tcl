@@ -11,27 +11,21 @@ set part xck26-sfvc784-2LV-c
 set outdir build_vivado/$core
 file mkdir $outdir
 
-# magic_mem is deliberately excluded: it is a simulation construct using
-# $readmemh and an initial block. The FPGA build would instantiate real BRAM.
+# CAVEAT: memory sits outside the synthesised boundary for the bare cores, so
+# the single-cycle core's Fmax omits instruction and data access time, which a
+# real single-cycle CPU must fit in its clock period. Treat it as optimistic.
 #
-# CAVEAT this makes the reported Fmax OPTIMISTIC for Phase 1 specifically. A
-# real single-cycle core must fit instruction fetch AND data access inside the
-# same clock period; with memory outside the synthesised boundary, that access
-# time is not in any measured path. Phases 2+ register the memory interface, so
-# their numbers are not distorted the same way. Do not read the Phase 1 Fmax as
-# achievable for a standalone single-cycle CPU with memory attached.
-set srcs [list \
-  rtl/common/rv32_pkg.sv \
-  rtl/common/alu.sv \
-  rtl/common/regfile.sv \
-  rtl/common/decoder.sv \
-  rtl/common/csr_file.sv \
-  rtl/core/$core.sv ]
-
-# The pipelined core instantiates the fetch unit; the single-cycle one does not.
-# read_verilog on an unused file is harmless, so add it unconditionally rather
-# than branching on the core name.
-lappend srcs rtl/core/fetch_unit.sv
+# Every synthesisable source. rv32_pkg first: everything imports it.
+# Simulation-only memories (magic_mem, latency_mem, main_mem) are excluded;
+# read_verilog on files the top does not use is harmless.
+set srcs [list rtl/common/rv32_pkg.sv]
+foreach f [lsort [glob rtl/common/*.sv rtl/core/*.sv]] {
+  if {$f ne "rtl/common/rv32_pkg.sv"} { lappend srcs $f }
+}
+foreach f {sram_1r1w icache dcache mem_arbiter} {
+  if {[file exists rtl/mem/$f.sv]} { lappend srcs rtl/mem/$f.sv }
+}
+foreach f [glob -nocomplain rtl/soc/*.sv] { lappend srcs $f }
 
 create_project -in_memory -part $part
 foreach s $srcs { read_verilog -sv $s }
@@ -39,16 +33,9 @@ set_property top $core [current_fileset]
 
 # Derive Fmax from the achieved slack:  Fmax = 1 / (target_period - WNS)
 #
-# One pass is enough, in EITHER direction. It is reasonable to worry that a
-# design which MEETS its constraint has simply stopped being optimised, making
-# the derived Fmax a property of the constraint rather than the design - but
-# that was measured here and is not what happens. core_rv32i_p5 synthesised at
-# both 4.0 ns (wns +0.021) and 3.0 ns (wns -0.979) reports an achieved period of
-# 3.979 ns either way, i.e. the same 251.3 MHz. Vivado reports the true
-# worst-case path regardless of whether the target was met.
-#
-# The target is settable anyway, as a second argument, so that assumption can be
-# re-checked cheaply on any future design rather than trusted.
+# Vivado reports the true worst-case path whether or not the target was met,
+# so this holds in either direction. The target is settable as a second
+# argument so that can be re-checked on any design.
 set target_ns 4.0
 if {[llength $argv] > 1} { set target_ns [lindex $argv 1] }
 puts "SYNTH target period = $target_ns ns"
@@ -58,6 +45,19 @@ opt_design
 
 report_utilization -file $outdir/utilization.rpt
 report_timing_summary -file $outdir/timing.rpt
+
+# A combinational loop makes every timing number meaningless: Vivado cuts the
+# loop at an arbitrary point. Refuse to report an Fmax for such a design.
+proc loop_count {file} {
+  set fh [open $file r]; set data [read $fh]; close $fh
+  if {[regexp {There (?:is|are) (\d+) combinational loop} $data -> n]} { return $n }
+  return -1
+}
+set n_loops [loop_count $outdir/timing.rpt]
+if {$n_loops != 0} {
+  puts "SYNTH FAILED $core: combinational loops = $n_loops (see $outdir/timing.rpt)"
+  exit 1
+}
 
 set wns [get_property SLACK [get_timing_paths -max_paths 1 -nworst 1 -setup]]
 set achieved_ns [expr {$target_ns - $wns}]
@@ -92,6 +92,7 @@ puts $fh "  \"part\": \"$part\","
 puts $fh "  \"fmax_mhz\": [format %.1f $fmax_mhz],"
 puts $fh "  \"wns_ns\": [format %.3f $wns],"
 puts $fh "  \"target_ns\": $target_ns,"
+puts $fh "  \"loops\": $n_loops,"
 puts $fh "  \"lut\": $n_lut,"
 puts $fh "  \"ff\": $n_ff,"
 puts $fh "  \"dsp\": $n_dsp,"
