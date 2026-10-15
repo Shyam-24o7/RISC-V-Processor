@@ -71,6 +71,15 @@ module tb_icache;
     use_ovr = 0;
   endtask
 
+  // Raise inv_req at a negedge, wait for inv_done, check the owed response
+  // has already been delivered, then drop inv_req.
+  task automatic invalidate(string name);
+    inv_req = 1;
+    #1; while (!inv_done) begin @(negedge clk); #1; end
+    chk({name, ": response before inv_done"}, int'(exp_rd == exp_wr), 1);
+    @(negedge clk); inv_req = 0;
+  endtask
+
   // ---- random phase driver: like the fetch unit, the address advances only
   // when a request is accepted; req itself comes and goes ----
   logic rand_on = 0;
@@ -112,6 +121,45 @@ module tb_icache;
     @(negedge clk); inv_req = 1;
     #1; while (!inv_done) begin @(negedge clk); #1; end
     @(negedge clk); inv_req = 0;
+
+    // ---- LRU choice: set 20 holds A and B; A is touched, so C evicts B ----
+    begin
+      int m;
+      fetch(32'h2140, 32'h2140);    // A miss
+      fetch(32'h2940, 32'h2940);    // B miss
+      fetch(32'h2140, 32'h2140);    // A hit, B is now least recently used
+      fetch(32'h3140, 32'h3140);    // C miss, evicts B
+      m = misses;
+      fetch(32'h2140, 32'h2140);    // A must have survived
+      chk("LRU: A survives", misses, m);
+      fetch(32'h2940, 32'h2940);    // B was evicted
+      chk("LRU: B evicted", misses, m + 1);
+    end
+
+    // ---- invalidate while a lookup is outstanding (hit in flight) ----
+    begin
+      int m;
+      fetch(32'h4080, 32'h4080);
+      @(negedge clk); use_ovr = 0; addr = 32'h4084; req = 1;
+      @(negedge clk); req = 0;                      // accepted at the edge between
+      invalidate("inv during lookup");
+      m = misses;
+      fetch(32'h4080, 32'h4080);
+      chk("inv during lookup: line refetched", misses, m + 1);
+    end
+
+    // ---- invalidate while a refill is in flight ----
+    begin
+      int m;
+      m = misses;
+      @(negedge clk); use_ovr = 0; addr = 32'h5034; req = 1;
+      @(negedge clk); req = 0;                      // accepted; the miss is detected now
+      @(negedge clk);                               // refill under way
+      invalidate("inv during refill");
+      chk("inv during refill: one miss", misses, m + 1);
+      fetch(32'h5030, 32'h5030);
+      chk("inv during refill: line refetched", misses, m + 2);
+    end
 
     // ---- random: sequential runs, jumps, conflicts across 4 ways' worth ----
     @(negedge clk); addr = 32'h0; req = 1; rand_on = 1;
