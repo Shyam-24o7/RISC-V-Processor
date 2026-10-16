@@ -82,9 +82,9 @@ module tb_core_p5_lat #(
   end
 
   // The tohost store commits at MEM, but on a pipelined core the storing
-  // instruction does not RETIRE until WB. Finishing the moment the store
-  // appears would cut the trace short by the depth of the pipeline, so drain
-  // first and only then report. Harmless on a single-cycle core, where store
+  // instruction does not RETIRE until WB. Completion is the store's handshake,
+  // not its request: with wait states the request is visible for LATENCY cycles
+  // before the store completes. The drain then lets it retire through WB. Harmless on a single-cycle core, where store
   // and retirement are the same cycle.
   localparam int DRAIN_CYCLES = 8;
   int          drain = -1;
@@ -97,7 +97,7 @@ module tb_core_p5_lat #(
   always_ff @(posedge clk) begin
     if (rst_n) begin
       cycles <= cycles + 1;
-      if ((drain < 0) && dwe && (daddr == tohost_addr)) begin
+      if ((drain < 0) && dreq && dwe && dready && (daddr == tohost_addr)) begin
         // riscv-tests encodes its result here: 1 passes, any other odd value is
         // (failing_test << 1) | 1.
         tohost_val   <= dwdata;

@@ -1,0 +1,12 @@
+{
+  "core": "rv32_soc",
+  "part": "xck26-sfvc784-2LV-c",
+  "fmax_mhz": 214.4,
+  "wns_ns": -1.165,
+  "target_ns": 3.5,
+  "loops": 0,
+  "lut": 5740,
+  "ff": 3654,
+  "dsp": 0,
+  "bram": 10
+}

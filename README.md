@@ -8,7 +8,7 @@ alongside it as the baseline.
 | | |
 |---|---|
 | **ISA** | RV32I + Zicsr + machine-mode traps |
-| **Cores** | `core_rv32i_p5` (5-stage pipeline, decoupled fetch), `core_rv32i` (single-cycle) |
+| **Cores** | `rv32_soc` (pipeline + split L1 caches), `core_rv32i_p5` (pipeline), `core_rv32i` (single-cycle) |
 | **Target** | AMD/Xilinx XCK26 (Kria K26 SOM / KV260), synthesis only |
 | **Compliance** | 54/58 applicable riscv-tests |
 | **Co-simulation** | Matches Spike instruction-for-instruction |
@@ -26,6 +26,8 @@ make tools-check            # prove every tool runs AND has not drifted
 
 make tb TB=tb_alu           # one module testbench
 make cosim PROG=hello       # compile C -> run on RTL and Spike -> diff traces
+make cosim PROG=hello CORE_TB=tb_soc   # cached system vs Spike
+make lint
 make regress                # the official riscv-tests compliance suite
 make synth CORE=core_rv32i  # Vivado: Fmax + utilisation
 make results                # regenerate results/comparison.md
@@ -341,14 +343,54 @@ fails the build — and it reports if a known gap *starts* passing, so the list 
 The cycle-count measurements behind the fetch unit (and the branch-prediction
 experiment that was reverted) are in `results/experiments.md`.
 
+## 5.2 Memory hierarchy
+
+    core_rv32i_p5 --instr--> icache --+
+                                      +--> mem_arbiter --line port--> main memory
+    core_rv32i_p5 --data---> dcache --+
+
+- **L1 caches:** 4 KiB each, 2-way set-associative, 16-byte lines, LRU.
+  Arrays are synchronous-read block RAM (`sram_1r1w`); valid, dirty and LRU
+  bits are flip-flops so reset and FENCE.I can clear them at once.
+- **Instruction cache:** one-cycle hits, one request per cycle, so the fetch
+  buffer stays full. A miss withholds the grant until the line arrives.
+- **Data cache:** write-back, write-allocate. A hit completes in MEM because
+  the core sends the next access's address one cycle early. A miss writes back
+  a dirty victim, refills, and replays through the hit path. A store followed
+  by an access to the same set re-reads rather than relying on block-RAM
+  collision behaviour.
+- **FENCE.I:** the data cache writes back every dirty line, then the
+  instruction cache invalidates, then fetch restarts at the next instruction.
+- **Arbiter:** one line port shared by both caches; the data side wins ties.
+  An L2 would attach downstream of it.
+- **Main memory:** simulation model with a configurable number of wait states,
+  outside the synthesised boundary.
+
+Measured results are in section 6 and `results/experiments.md`.
+
 ## 6. Results
 
 | Core | IPC | Fmax (MHz) | LUT / FF / BRAM / DSP |
 |---|---|---|---|
 | RV32I single-cycle | 1.000 | 216.7 | 2123 / 1438 / 0 / 0 |
 | RV32I 5-stage pipeline | 0.612 | 259.0 | 2718 / 2446 / 0 / 0 |
+| RV32I pipeline + L1 I$/D$ (4 KiB each) | - | 214.4 | 5740 / 3654 / 10 / 0 |
 
-Both IPC figures are for **ideal memory**, the one case where the pipeline's prefetch
+The `rv32_soc` row has no ideal-memory IPC: its IPC depends on main-memory latency, so
+it is reported in the table below. Its Fmax excludes main memory.
+
+With 10 main-memory wait states, cycles to completion (all runs match Spike):
+
+| Program | Uncached pipeline | Cached | Speedup | I$ hit rate | D$ hit rate |
+|---|---|---|---|---|---|
+| hello.c | 1439 | 880 | 1.64x | 92.9% | 82.6% |
+| cachestress.c | 167919 | 126479 | 1.33x | 99.9% | 36.5% |
+
+`cachestress.c` is written to thrash the data cache, so its low D$ hit rate reflects the
+access pattern. At 1 wait state the cached system is slower on both programs (hello.c 575
+vs 507 cycles); see `results/experiments.md`, section 6.
+
+Both IPC figures above are for **ideal memory**, the one case where the pipeline's prefetch
 buffer is pure overhead. Under any real memory latency the ranking flips (section 5.1),
 so do not read IPC × Fmax from this table as the pipeline's real-world throughput.
 
@@ -369,8 +411,10 @@ data access time sit outside every measured path — which a real single-cycle c
 ```
 rtl/
   common/     rv32_pkg.sv  alu.sv  regfile.sv  decoder.sv  csr_file.sv
-  mem/        magic_mem.sv  latency_mem.sv
   core/       core_rv32i.sv  core_rv32i_p5.sv  fetch_unit.sv
+  mem/        sram_1r1w.sv  icache.sv  dcache.sv  mem_arbiter.sv
+              main_mem.sv  latency_mem.sv  magic_mem.sv   (last three: simulation only)
+  soc/        rv32_soc.sv
 verif/
   tb/         one self-checking testbench per module, plus the trace-dumping top
   prog/       crt0.S, linker script, C benchmark, smoke program
@@ -392,14 +436,11 @@ The verification harness is deliberately microarchitecture-independent: it consu
 RVFI retirement port, so a different core implementing the same interface is validated by
 the same flow with no changes. Planned next:
 
-- **Branch target buffer** in the fetch stage. Static prediction resolved in ID was tried
-  and reverted: it bought 8% IPC, but the extra input on the PC
-  redirect mux sat on the EX critical path (results/experiments.md, section 3). A BTB predicts *before* decode and
-  adds no depth to that path, which is the property that matters.
-- **Custom AI instructions** in the reserved custom opcode space — a fused multiply-accumulate
-  with a wide accumulator, and an INT8 packed dot product, the core primitive for quantized
-  inference. Note CV32E40P places its SIMD ops at opcode `0x3B`, which is *not* one of
-  RISC-V's four reserved custom opcodes (`0x0B`, `0x2B`, `0x5B`, `0x7B`) — worth avoiding.
+- **Branch target buffer** in the fetch stage.
+- **L2 cache** between the arbiter and main memory.
+- **Non-blocking data cache** (miss status holding registers).
+- **M extension**, then **custom instructions** in the reserved custom opcode
+  space (`0x0B`, `0x2B`, `0x5B`, `0x7B`).
 
 ---
 
