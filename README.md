@@ -1,459 +1,845 @@
-# RV32I Processor
+<h1 align="center">RV32I Pipelined Processor with an L1 Memory Hierarchy</h1>
 
-A five-stage pipelined RISC-V RV32I processor in SystemVerilog, verified
-instruction-by-instruction against the reference ISA simulator (Spike) and
-synthesised for a Xilinx Zynq UltraScale+ FPGA. A single-cycle core is kept
-alongside it as the baseline.
+<p align="center">
+A five-stage pipelined RISC-V (RV32I) processor with split L1 instruction and data caches,
+written in SystemVerilog, checked instruction-by-instruction against the official reference
+simulator, and synthesised for an AMD/Xilinx Zynq UltraScale+ FPGA.
+</p>
+
+<p align="center">
+  <img src="docs/img/system.svg" alt="System overview: pipeline, two L1 caches, arbiter, main memory" width="100%">
+</p>
 
 | | |
 |---|---|
-| **ISA** | RV32I + Zicsr + machine-mode traps |
-| **Cores** | `rv32_soc` (pipeline + split L1 caches), `core_rv32i_p5` (pipeline), `core_rv32i` (single-cycle) |
-| **Target** | AMD/Xilinx XCK26 (Kria K26 SOM / KV260), synthesis only |
-| **Compliance** | 54/58 applicable riscv-tests |
-| **Co-simulation** | Matches Spike instruction-for-instruction |
+| **ISA** | RV32I base integer ISA, Zicsr, Zicntr, Zifencei; machine mode with precise traps |
+| **Core** | 5-stage in-order pipeline (IF · ID · EX · MEM · WB), full forwarding, decoupled fetch with a 4-entry prefetch buffer |
+| **Caches** | 4 KiB L1 I-cache + 4 KiB L1 D-cache, 2-way set-associative, 16-byte lines, LRU, write-back + write-allocate data cache, 1-cycle hits |
+| **FPGA** | XCK26 (Kria K26 / KV260): **214.4 MHz**, 5,740 LUTs, 3,654 flip-flops, 10 block RAMs, 0 DSPs (post-synthesis) |
+| **Verification** | Matches the Spike reference simulator instruction-for-instruction; 54/58 riscv-tests on every design, including runs with up to 10 memory wait states; 15 self-checking unit testbenches |
+| **Performance** | 1.64× fewer cycles than the uncached pipeline on `hello.c` and 1.33× on a cache stress test, both at 10 wait states |
+| **Language / tools** | SystemVerilog · Verilator 5.026 · Spike 1.1.0 · GCC 13.2.0 · Vivado 2022.2 · Docker |
 
 ---
 
-## Quick start
+## Contents
 
-Everything runs inside a pinned container, driven by `make` from WSL2:
+1. [Quick start](#1-quick-start)
+2. [What is in this repository](#2-what-is-in-this-repository)
+3. [The instruction set implemented](#3-the-instruction-set-implemented)
+4. [The pipeline, stage by stage](#4-the-pipeline-stage-by-stage)
+   - [4.1 IF — the decoupled fetch unit](#41-if--the-decoupled-fetch-unit)
+   - [4.2 ID — decode, register read, hazard detection](#42-id--decode-register-read-hazard-detection)
+   - [4.3 EX — forwarding, ALU, branches, addresses](#43-ex--forwarding-alu-branches-addresses)
+   - [4.4 MEM — data access, CSRs, the trap point](#44-mem--data-access-csrs-the-trap-point)
+   - [4.5 WB — writeback and retirement](#45-wb--writeback-and-retirement)
+   - [4.6 Hazards, stalls and flushes](#46-hazards-stalls-and-flushes)
+   - [4.7 Traps and the CSR file](#47-traps-and-the-csr-file)
+5. [The memory hierarchy](#5-the-memory-hierarchy)
+   - [5.1 Cache organisation](#51-cache-organisation)
+   - [5.2 The block-RAM template](#52-the-block-ram-template)
+   - [5.3 The instruction cache](#53-the-instruction-cache)
+   - [5.4 The data cache](#54-the-data-cache)
+   - [5.5 Arbiter, line port and main memory](#55-arbiter-line-port-and-main-memory)
+   - [5.6 FENCE.I, end to end](#56-fencei-end-to-end)
+6. [The single-cycle baseline](#6-the-single-cycle-baseline)
+7. [The verification ecosystem](#7-the-verification-ecosystem)
+8. [Results](#8-results)
+9. [Design decisions and trade-offs](#9-design-decisions-and-trade-offs)
+10. [Bugs the verification flow caught](#10-bugs-the-verification-flow-caught)
+11. [Limitations and roadmap](#11-limitations-and-roadmap)
+12. [Repository layout and make targets](#12-repository-layout-and-make-targets)
+13. [References](#13-references)
+
+---
+
+## 1. Quick start
+
+Everything runs from WSL2 inside a pinned Docker image, driven by `make` from the repository root.
 
 ```bash
-make env-check              # host prerequisites (docker, python, vivado reachable)
-make docker-build           # build the pinned toolchain image (~20 min, once)
-make tools-check            # prove every tool runs AND has not drifted
+make env-check                 # host prerequisites (docker, python, vivado reachable)
+make docker-build              # build the pinned toolchain image (~20 min, once)
+make tools-check               # prove every tool runs, and that none has drifted
 
-make tb TB=tb_alu           # one module testbench
-make cosim PROG=hello       # compile C -> run on RTL and Spike -> diff traces
-make cosim PROG=hello CORE_TB=tb_soc   # cached system vs Spike
-make lint
-make regress                # the official riscv-tests compliance suite
-make synth CORE=core_rv32i  # Vivado: Fmax + utilisation
-make results                # regenerate results/comparison.md
+make lint                      # Verilator -Wall on every top; any warning fails
+make tb TB=tb_dcache           # one self-checking unit testbench
+make cosim PROG=hello CORE_TB=tb_soc          # cached system vs Spike, one program
+make cosim-lat PROG=cachestress CORE_TB=tb_soc LAT=10   # with 10 wait states
+make fetch-tests               # clone riscv-tests (once)
+make regress CORE_TB=tb_soc    # the official compliance suite, against Spike
+make synth CORE=rv32_soc TARGET=3.5           # Vivado: Fmax, area, loop + BRAM gates
+make results                   # regenerate results/comparison.md
 ```
+
+`CORE_TB` selects the design under test: `tb_core_rv32i` (single-cycle), `tb_core_p5`
+(pipeline, ideal memory), `tb_core_p5_lat` (pipeline with memory latency), `tb_soc`
+(pipeline + caches). The checks are identical for all of them — see
+[section 7](#7-the-verification-ecosystem).
+
+To regenerate every figure in this README: `python scripts/make_diagrams.py`.
 
 ---
 
-## 1. What a single-cycle core means
+## 2. What is in this repository
 
-Every instruction completes **between two clock edges**. Fetch, decode, register read,
-execute, memory access and writeback all happen inside one clock period.
+Three processors share one ISA package, one set of building blocks and one verification flow:
 
-The consequence is a trade: IPC is exactly **1.000** — nothing ever stalls, because there
-is nothing to stall on — but the clock period must be long enough to contain that entire
-chain of logic. A pipelined design breaks the chain into stages, giving a much shorter
-clock at the cost of hazards that must then be managed.
-
-RV32I has no multiply or divide, so there is no multi-cycle functional unit anywhere in
-this design. That is what makes IPC exactly 1.000 rather than merely close to it.
-
----
-
-## 2. Datapath
-
-```
-                     ┌───────────────────────────────────────────────┐
-                     │                    (next PC feedback)         │
-   ┌──────┐          │                                               │
-   │mtvec │──┐       │        ┌────────┐                             │
-   └──────┘  │       └───────>│   PC   │                             │
-   ┌──────┐  │  ┌────┐        │  (reg) │                             │
-   │ mepc │──┼─>│MUX │───────>└───┬────┘                             │
-   └──────┘  │  └────┘            │ instr_addr_o                     │
-             │    ▲               ▼                                  │
-  pc+4 / branch / jump     ┌──────────────┐                          │
-             └─────────────│ INSTRUCTION  │                          │
-                           │    MEMORY    │                          │
-                           └──────┬───────┘                          │
-                                  │ instr_rdata_i                    │
-                                  ▼                                  │
-                           ┌──────────────┐                          │
-                           │   DECODER    │  insn -> decoded_t       │
-                           └──┬────────┬──┘                          │
-                    rs1, rs2  │        │  imm, alu_op, control flags │
-                              ▼        │                             │
-                       ┌────────────┐  │                             │
-                       │  REGFILE   │  │                             │
-                       │   32 x 32  │  │                             │
-                       │  2R / 1W   │  │                             │
-                       └──┬──────┬──┘  │                             │
-                   rs1_d  │      │ rs2_d                             │
-                          ▼      ▼     │                             │
-                      ┌─────┐  ┌─────┐ │                             │
-                 PC ─>│MUX A│  │MUX B│<┘ imm                         │
-                      └──┬──┘  └──┬──┘                               │
-                         ▼        ▼                                  │
-                      ┌──────────────┐                               │
-                      │     ALU      │                               │
-                      └──────┬───────┘                               │
-                             │ alu_result                            │
-          ┌──────────────────┼───────────────────┐                   │
-          ▼                  ▼                   ▼                   │
-   ┌─────────────┐    ┌─────────────┐    ┌──────────────┐            │
-   │  DATA MEM   │    │  CSR FILE   │    │ branch cond  │            │
-   │ addr/we/be  │    │  + TRAPS    │    │ jump target  │────────────┘
-   └──────┬──────┘    └──────┬──────┘    └──────────────┘
-          │ load_data        │ csr_rdata
-          └────────┬─────────┘
-                   ▼
-            ┌─────────────┐
-            │  WRITEBACK  │───> regfile write port (rd)
-            │     MUX     │
-            └─────────────┘
-```
-
-**Reading the diagram:** the PC drives instruction memory; the fetched word is decoded
-into a control bundle; the register file supplies operands; two muxes select whether the
-ALU sees the PC (for `AUIPC`) and the immediate (for I-type) or the raw registers; the ALU
-result then fans out to memory, the CSR file and the branch unit; and a final mux picks
-what gets written back. The next-PC decision feeds back to the top.
-
-### 2.1 Module responsibilities
-
-| Module | Lines | Responsibility |
+| Design | Top module | What it is for |
 |---|---|---|
-| `rtl/common/rv32_pkg.sv` | 128 | Every ISA encoding: opcodes, funct3/funct7, CSR addresses, exception causes. The single source of truth. |
-| `rtl/common/alu.sv` | 39 | 11 combinational operations |
-| `rtl/common/regfile.sv` | 38 | 32×32 registers, two read ports, one write port |
-| `rtl/common/decoder.sv` | 137 | Instruction word → control bundle + sign-extended immediate |
-| `rtl/common/csr_file.sv` | 176 | Machine-mode CSRs, trap entry/exit, performance counters |
-| `rtl/mem/magic_mem.sv` | 59 | Zero-latency memory model (simulation only) |
-| `rtl/mem/latency_mem.sv` | 148 | Memory with configurable wait states and a ready handshake; optional pipelined instruction port |
-| `rtl/mem/sram_1r1w.sv` | 37 | Simple dual-port RAM with one synchronous read port and lane-enabled writes, coded to map to block RAM |
-| `rtl/mem/icache.sv` | 154 | L1 instruction cache: 2-way, 16-byte lines, read only, hits stream at one per cycle |
-| `rtl/mem/dcache.sv` | 247 | L1 data cache: 2-way, 16-byte lines, write-back and write-allocate, hits complete in MEM without a stall |
-| `rtl/mem/mem_arbiter.sv` | 72 | Shares one line port between the two caches; the data cache wins a tie and a granted side keeps the port until done |
-| `rtl/mem/main_mem.sv` | 68 | Line-wide main memory with configurable wait states (simulation only) |
-| `rtl/soc/rv32_soc.sv` | 100 | Cached core complex: pipeline, both L1 caches and the arbiter; sequences `FENCE.I` across them |
-| `rtl/core/fetch_unit.sv` | 168 | Decoupled fetch: runs the fetch address ahead, buffers arriving instructions |
-| `rtl/core/core_rv32i_p5.sv` | 576 | Five-stage pipelined core |
-| `rtl/core/core_rv32i.sv` | 283 | Top-level datapath tying it all together |
+| **Cached system** | `rv32_soc` | The main design: the pipeline plus L1 I-cache, L1 D-cache and a memory arbiter, with one line-wide port to main memory |
+| **Pipeline** | `core_rv32i_p5` | The five-stage core on its own, connected straight to a memory model; used for uncached comparisons |
+| **Single-cycle** | `core_rv32i` | The reference point: every instruction completes in one clock |
 
-### 2.2 Details that are easy to get wrong
-
-These are the places where a plausible-looking implementation is subtly incorrect:
-
-**Shift amounts are masked to 5 bits.** RV32 shifts use `rs2[4:0]`, so `x << 33` is a
-shift by 1, not zero. Passing the full 32-bit operand to `<<` silently gives the wrong
-answer.
-
-**`SRA` needs a signed operand.** `>>>` performs an arithmetic shift *only* on a signed
-value; on an unsigned one it behaves exactly like `>>`, quietly losing sign extension.
-
-**`x0` is enforced on all three ports.** It is not a register that holds zero — it cannot
-hold anything else. RISC-V depends on this: `ret` is `jalr x0, 0(ra)`, which computes a
-link address purely to discard it.
-
-**Immediates are shredded across the encoding.** The register fields sit at fixed
-positions in every format (`rs1`=[19:15], `rs2`=[24:20], `rd`=[11:7]) so the register file
-can start reading before decode finishes. The price is that B-type and J-type immediates
-are reassembled from scattered bits, with an implicit zero LSB since branch targets are
-2-byte aligned.
-
-**Byte and halfword loads sign-extend from their own lane.** `LB` from address 3 takes
-bits [31:24] and extends from bit 7 *of that byte*, not bit 31 of the word.
-
-**`csr_we` must be pure write *intent*.** Folding a stall term into it
-closed a combinational loop:
+Each design emits the same **RVFI retirement trace** (one record per instruction that
+completes), which is what the verification flow compares against the reference simulator.
+That shared interface is why a new microarchitecture can be dropped in and checked by the
+existing flow without changing a line of it.
 
 ```
-csr_we -> csr_illegal -> trap_taken -> stall -> csr_we
+rtl/common   rv32_pkg (ISA constants)  alu  regfile  decoder  csr_file
+rtl/core     core_rv32i  core_rv32i_p5  fetch_unit
+rtl/mem      sram_1r1w  icache  dcache  mem_arbiter  main_mem*  latency_mem*  magic_mem*
+rtl/soc      rv32_soc                                   (* = simulation-only models)
 ```
-
-`csr_we` is therefore pure write intent. `csr_file`'s `stall_i` gates the actual register
-updates (write, trap entry, `MRET`) and never `illegal_o`.
 
 ---
 
-## 3. Traps
+## 3. The instruction set implemented
 
-```
-   instruction
-        │
-        ▼
-   ┌─────────────────────────────────────────┐
-   │ priority encoder (illegal first)        │
-   │   illegal instruction   -> mcause 2     │
-   │   ecall                 -> mcause 11    │
-   │   ebreak                -> mcause 3     │
-   │   load  misaligned      -> mcause 4     │
-   │   store misaligned      -> mcause 6     │
-   │   fetch misaligned      -> mcause 0     │
-   └──────────────┬──────────────────────────┘
-                  │ trap_taken
-                  ▼
-   ┌─────────────────────────────────────────┐
-   │ mepc   <- faulting PC                   │
-   │ mcause <- cause code                    │
-   │ mtval  <- faulting address / instruction│
-   │ mstatus.MPIE <- mstatus.MIE             │
-   │ mstatus.MIE  <- 0                       │
-   │ PC     <- mtvec                         │
-   └─────────────────────────────────────────┘
-                  │
-              handler runs
-                  │  mret
-                  ▼
-   ┌─────────────────────────────────────────┐
-   │ mstatus.MIE  <- mstatus.MPIE            │
-   │ mstatus.MPIE <- 1                       │
-   │ PC           <- mepc                    │
-   └─────────────────────────────────────────┘
-```
+### Instructions
 
-A trapping instruction writes **no** architectural state: `rd_we` and `data_we_o` are both
-gated by `trap_taken`, so a misaligned store never reaches memory.
-
-`mstatus.MPP` reads as 3 (machine mode). On an M-mode-only core the privilege level before
-any trap is always machine mode; leaving it zero makes `mstatus` read `0x0080` where a
-conforming model reads `0x1880`.
-
----
-
-## 4. The containerised environment
-
-Five tools, three of which are Linux-native, one Windows-native, all driven from one
-`make`:
-
-```
-  Windows 11 host
-  │
-  ├─ Vivado 2022.2 (native Windows)  ── synthesis, Fmax, utilisation
-  │       ▲
-  │       │ invoked from WSL over interop:
-  │       │   /mnt/d/Vivado/2022.2/bin/vivado.bat -mode batch ...
-  │
-  ├─ WSL2 : Ubuntu 24.04             ── `make` runs here
-  │       │
-  │       │  docker run -v <repo>:/work -v ~/build/riscv:/build
-  │       ▼
-  │  ┌──────────────────────────────────────────────┐
-  │  │  rv32-toolchain:1   (digest-pinned base)     │
-  │  │                                              │
-  │  │   verilator 5.026     built from source      │
-  │  │   riscv64-unknown-elf-gcc 13.2.0             │
-  │  │   spike 1.1.0         --enable-commitlog     │
-  │  │   yosys / sby / boolector  (oss-cad-suite)   │
-  │  └──────────────────────────────────────────────┘
-  │
-  └─ repo lives on D:\ , build artefacts on ext4
-```
-
-### Why it is built this way
-
-**Source on Windows, builds on ext4.** WSL2 reaching into `/mnt/d` goes through a 9p
-filesystem bridge that is roughly 10–20× slower for many-small-file operations. Verilating
-a core emits thousands of C++ files — precisely the pathological case. Sources are a few
-hundred text files read once, so that crossing is free; the build output is not.
-
-**Everything pinned, including the base image by digest.** `ubuntu:24.04` is a moving tag.
-A rebuild months from now could silently serve a different compiler, and a different
-compiler produces different instruction counts — which would invalidate any performance
-comparison across designs built at different times.
-
-**`tools-check` verifies more than "the binary exists".** It asserts the RISC-V GCC version
-has not drifted from the one the results were measured with, and that Spike genuinely
-*emits commit lines*. That second check exists because commit logging is opt-in at Spike's
-configure time, and a build without it still passes `spike --help` — the failure is
-completely silent until a trace comparison mysteriously sees an empty reference.
-
-**Vivado stays outside the container.** The one thing that does *not* live in the
-container is Vivado, because it is a native Windows install; WSL interop lets a single
-`make synth` drive it anyway, and `scripts/synth.tcl` uses only relative paths so the
-space in the repo path never reaches a Make prerequisite (GNU Make cannot escape it).
-
----
-
-## 5. Verification
-
-Four independent layers, weakest to strongest:
-
-```
-   verif/prog/hello.c
-        │
-        │  riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32
-        ▼
-    hello.elf ────────────┬────────────────────┬──────────────┐
-        │                 │                    │              │
-        │ objcopy -O bin  │ spike --priv=m     │ nm           │
-        ▼                 │  -l --log-commits  │              │
-    hello.bin             ▼                    ▼              │
-        │            hello.spike          tohost address      │
-        │ od -tx4    (golden trace)       write_tohost        │
-        ▼                 │                    │              │
-    hello.hex             │                    │              │
-        │                 │                    │              │
-        ▼                 │                    │              │
- ┌──────────────────┐     │                    │              │
- │    Verilator     │     │                    │              │
- │  tb_core_rv32i   │     │                    │              │
- │    + core RTL    │     │                    │              │
- └────────┬─────────┘     │                    │              │
-          │ RVFI trace    │                    │              │
-          ▼               ▼                    ▼              │
-      hello.rtl ────> compare_trace.py <───────┘              │
-                            │                                 │
-                  MATCH  /  DIVERGENCE at instruction #N ◄─────┘
-                            with both sides printed
-```
-
-**Layer 1 — per-module directed testbenches.** One per module, self-checking, `$fatal` on
-mismatch. Fast, and they localise a failure to a single module.
-
-**Layer 2 — Spike co-simulation.** The core exposes an **RVFI** (RISC-V Formal Interface)
-retirement port. The testbench dumps one line per retired instruction; `compare_trace.py`
-parses Spike's commit log into the same form and reports the *first* divergence with both
-sides shown. This is the difference between *"CoreMark failed"* and *"instruction #48211,
-`lw x7,0(x9)`: RTL rd=0x4, Spike rd=0x10"*.
-
-**Layer 3 — riscv-tests.** The official compliance suite, dual-gated: the suite's own
-`tohost` result code *and* full trace agreement with Spike. The first tells you which
-sub-test failed; the second tells you which instruction diverged.
-
-**Layer 4 — synthesis.** Not correctness, but it keeps the RTL honest: anything that
-cannot be built is caught immediately rather than at the end.
-
-### Two subtleties the harness has to get right
-
-**Spike omits trapping instructions from its commit log** — it prints a disassembly line
-and an `exception` line, but no commit record. The RTL trace dump therefore skips trapping
-instructions too. This does *not* weaken trap checking: if the core trapped where Spike did
-not, our trace would be missing a record Spike has, and vice versa. Either way it diverges.
-
-**A truncated trace is a divergence, never a pass.** If the core hangs, its trace is short.
-Silently accepting that because "everything so far matched" would make the whole harness
-untrustworthy, so `first_divergence` compares to `max(len(rtl), len(spike))` and reports
-the missing side explicitly.
-
-### Compliance status
-
-**54 of 58** applicable tests pass (`rv32ui` + `rv32mi`). `rv32um` is not applicable — this
-core has no M extension. The four remaining failures are documented scope boundaries, not
-defects:
-
-| Test | Why |
+| Group | Instructions |
 |---|---|
-| `rv32ui-p-ma_data` | Requires *hardware* misaligned access. The spec permits trapping instead, which is what this core does. |
-| `rv32mi-p-breakpoint` | Needs a debug trigger module (`tselect`/`tdata*`) |
-| `rv32mi-p-pmpaddr` | Tests PMP enforcement; this core implements zero PMP regions |
-| `rv32mi-p-mcsr` | Passes its own result gate. Differs only on `marchid`, an implementation-defined identity register — ours reads 0, Spike reports its own value. |
+| Arithmetic / logic | `ADD SUB SLL SLT SLTU XOR SRL SRA OR AND` and the immediate forms `ADDI SLTI SLTIU XORI ORI ANDI SLLI SRLI SRAI` |
+| Upper immediates | `LUI AUIPC` |
+| Control flow | `JAL JALR BEQ BNE BLT BGE BLTU BGEU` |
+| Loads / stores | `LB LH LW LBU LHU SB SH SW` |
+| System | `ECALL EBREAK MRET`, `FENCE` (a no-op on one hart with blocking caches), `FENCE.I` (flushes the data cache, invalidates the instruction cache) |
+| CSR (Zicsr) | `CSRRW CSRRS CSRRC CSRRWI CSRRSI CSRRCI` |
 
-The runner separates documented gaps from unexpected failures, so only a real regression
-fails the build — and it reports if a known gap *starts* passing, so the list cannot rot.
+Any other encoding — an unknown opcode, a reserved `funct3`, a non-zero `funct7` where one is
+not allowed, including the M extension's `MUL`/`DIV` — raises an **illegal-instruction
+exception** rather than doing something undefined.
+
+### Control and status registers
+
+| CSR | Behaviour |
+|---|---|
+| `mstatus` | `MIE`/`MPIE` are pushed on a trap and popped on `mret`; `MPP` always reads `11` (machine mode is the only mode) |
+| `mtvec` | Direct mode; the low two bits are forced to zero |
+| `mepc`, `mcause`, `mtval` | Written by trap entry; software-writable (`mepc[0]` forced to zero) |
+| `mscratch`, `mie`, `mip` | Read/write storage (no interrupt sources exist yet) |
+| `misa` | Reads `0x4000_0100`: 32-bit, base `I` |
+| `mvendorid`, `marchid`, `mimpid`, `mhartid` | Read-only, zero |
+| `mcycle(h)`, `minstret(h)` | 64-bit counters; a CSR write suppresses that cycle's increment across the whole 64-bit value |
+| `mcountinhibit` | Bits `CY` and `IR` stop the two counters |
+| `cycle(h)`, `time(h)`, `instret(h)` | Zicntr read-only views (`time` mirrors `cycle`) |
+| `pmpcfg0–3`, `pmpaddr0–15` | Accept writes and read zero (zero PMP regions are implemented) |
+
+Accessing any other CSR address, or writing a read-only one, is an illegal instruction.
+
+### Exceptions
+
+Checked in this priority order, all precise:
+
+| Cause | `mcause` | `mtval` |
+|---|---|---|
+| Illegal instruction (incl. illegal CSR access) | 2 | the instruction word |
+| `ECALL` from M-mode | 11 | 0 |
+| `EBREAK` | 3 | the PC |
+| Load address misaligned | 4 | the address |
+| Store address misaligned | 6 | the address |
+| Instruction address misaligned (jump/branch to a non-4-byte-aligned target) | 0 | the target |
 
 ---
 
-## 5.1 Memory latency
+## 4. The pipeline, stage by stage
 
-The cycle-count measurements behind the fetch unit (and the branch-prediction
-experiment that was reverted) are in `results/experiments.md`.
+<p align="center">
+  <img src="docs/img/pipeline.svg" alt="Five-stage pipeline datapath with forwarding and control paths" width="100%">
+</p>
 
-## 5.2 Memory hierarchy
+The core is a classic five-stage in-order pipeline (Patterson & Hennessy style) with three
+departures that matter: the **front end is decoupled** by a prefetch buffer, **traps and CSR
+accesses happen in MEM** rather than spread across stages, and the **data cache is read one
+cycle early** so that a hit completes in MEM without a stall.
 
-    core_rv32i_p5 --instr--> icache --+
-                                      +--> mem_arbiter --line port--> main memory
-    core_rv32i_p5 --data---> dcache --+
+Each pipeline register is a SystemVerilog `struct` carrying `valid`, the PC, the raw
+instruction and the decoded control bundle forward, so every later stage can see exactly what
+instruction it holds — which is also what makes the RVFI trace at WB possible.
 
-- **L1 caches:** 4 KiB each, 2-way set-associative, 16-byte lines, LRU.
-  Arrays are synchronous-read block RAM (`sram_1r1w`); valid, dirty and LRU
-  bits are flip-flops so reset and FENCE.I can clear them at once.
-- **Instruction cache:** one-cycle hits, one request per cycle, so the fetch
-  buffer stays full. A miss withholds the grant until the line arrives.
-- **Data cache:** write-back, write-allocate. A hit completes in MEM because
-  the core sends the next access's address one cycle early. A miss writes back
-  a dirty victim, refills, and replays through the hit path. A store followed
-  by an access to the same set re-reads rather than relying on block-RAM
-  collision behaviour.
-- **FENCE.I:** the data cache writes back every dirty line, then the
-  instruction cache invalidates, then fetch restarts at the next instruction.
-- **Arbiter:** one line port shared by both caches; the data side wins ties.
-  An L2 would attach downstream of it.
-- **Main memory:** simulation model with a configurable number of wait states,
-  outside the synthesised boundary.
+| Register | Carries |
+|---|---|
+| ID/EX | `valid, pc, insn, decoded_t, rs1_data, rs2_data` |
+| EX/MEM | `valid, pc, insn, decoded_t, alu_result, rs1_data, store_data, mem_addr, pc_next, fetch_misaligned` |
+| MEM/WB | `valid, pc, insn, rd_addr, rd_we, wb_data, pc_next, trap` |
 
-Measured results are in section 6 and `results/experiments.md`.
+### 4.1 IF — the decoupled fetch unit
 
-## 6. Results
+<p align="center">
+  <img src="docs/img/fetch_unit.svg" alt="Fetch unit: fetch PC, in-flight PC queue, instruction buffer, discard counter" width="92%">
+</p>
 
-| Core | IPC | Fmax (MHz) | LUT / FF / BRAM / DSP |
+The first version of this pipeline fetched directly from memory, and a fetch stall froze the
+whole pipeline. Measured with memory latency, that made the pipeline **29% slower than the
+single-cycle core at every latency**: fetch latency was paid once per instruction, exactly as
+on the single-cycle machine, so the pipeline's overlapping stages bought nothing. The fetch
+unit fixes that by decoupling fetch from decode.
+
+**How it works:**
+
+- **`fetch_pc`** runs ahead of decode. A request is presented whenever there is room for its
+  response: *in-flight requests + buffered instructions < DEPTH (4)* and no redirect this cycle.
+  The request is **issued** — its PC queued, `fetch_pc` advanced by 4 — only when the memory
+  grants it (`instr_req && instr_gnt`). The I-cache withholds the grant while it refills a line.
+- **The in-flight PC queue** remembers the PC of every issued request, oldest first. Memory
+  answers in order, so each response is paired with the oldest queued PC.
+- **The instruction buffer** holds up to four `{pc, insn}` pairs waiting for decode. Its head
+  *is* the IF/ID interface: `insn_valid` is simply "the buffer is not empty". When the buffer is
+  empty a bubble flows down the pipeline instead of the pipeline freezing.
+- **Redirects** (branch, trap, `mret`, `FENCE.I`) load the new PC, clear the buffer and the
+  queue, and add every still-unanswered request to **`discard_q`**. Responses that arrive for
+  the abandoned path are counted down and dropped, so a wrong-path instruction can never reach
+  decode. The counter *accumulates* across redirects: two redirects in consecutive cycles (a
+  taken branch to a misaligned target, then that branch's trap) must discard the owed responses
+  of both.
+
+A subtle ordering detail: a response and a new request can happen in the same cycle. The
+response shifts the queue down, so the new PC is written at its *post-shift* index — writing it
+first loses an entry. A simulation assertion checks the occupancy invariant every cycle.
+
+### 4.2 ID — decode, register read, hazard detection
+
+**Decoder** (`decoder.sv`). Purely combinational; turns the 32-bit instruction into a
+`decoded_t` bundle:
+
+| Field | Meaning |
+|---|---|
+| `rs1_addr, rs2_addr, rd_addr, rd_we` | register operands and whether `rd` is written |
+| `imm` | the sign-extended immediate for this format (I, S, B, U, J, or the CSR address) |
+| `alu_op, alu_a_pc, alu_b_imm` | ALU operation and operand-mux selects |
+| `is_branch, is_jal, is_jalr, is_load, is_store, is_csr` | instruction class |
+| `is_ecall, is_ebreak, is_mret, is_fence_i, illegal` | system instructions and illegal encodings |
+| `funct3` | carried for branch conditions, load/store size, CSR operation |
+
+RISC-V keeps `rs1`, `rs2` and `rd` at fixed bit positions in every format, so the register file
+starts reading before decode finishes. The price is the scrambled B- and J-type immediates,
+which the decoder reassembles.
+
+**Register file** (`regfile.sv`). 32 × 32 bits, two asynchronous read ports, one synchronous
+write port, reset to zero, `x0` hard-wired to zero on read and never written.
+
+**WB → ID bypass.** The register file writes on the clock edge but reads asynchronously, so an
+instruction in ID would read the *old* value of a register being written by the instruction in
+WB that same cycle. A small mux forwards the WB value instead.
+
+**Hazard detection.** One hazard cannot be solved by forwarding: when the instruction in EX
+produces its value only at the end of **MEM** — a **load**, or a **CSR read** (CSRs are
+accessed in MEM) — and the instruction in ID needs that value. Detection raises
+`stall_ld_use`: the ID instruction stays put and a bubble enters EX. One cycle later the
+producer is in MEM/WB and ordinary forwarding delivers the value.
+
+### 4.3 EX — forwarding, ALU, branches, addresses
+
+**Forwarding.** Each source operand passes through a forwarding mux with three inputs, in
+priority order:
+
+1. **EX/MEM** — the result of the instruction one ahead, if it writes `rd`, `rd ≠ x0`, and its
+   result actually exists in EX. Loads and CSR reads are excluded: in EX/MEM their
+   `alu_result` is an address or meaningless, and forwarding it would hand the consumer garbage
+   (they are covered by the interlock above).
+2. **MEM/WB** — the final writeback value of the instruction two ahead, including loaded data
+   and CSR read data.
+3. The value read in ID.
+
+**ALU** (`alu.sv`). Combinational, eleven operations: `ADD SUB SLL SLT SLTU XOR SRL SRA OR AND`
+and `PASS_B` (for `LUI`). Shift amounts use `b[4:0]`. Operand A is `rs1` or the PC (`AUIPC`);
+operand B is `rs2` or the immediate.
+
+**Link address.** `JAL`/`JALR` write `pc + 4`, computed **here** rather than later so the very
+next instruction can forward it (a `call` followed immediately by a use of `ra` does not stall).
+
+**Branch unit.** Evaluates the six conditions (`== ≠ <s ≥s <u ≥u`) on the forwarded operands
+and computes the target: `pc + imm` for branches and `JAL`, `(rs1 + imm) & ~1` for `JALR`. A
+taken branch or jump redirects fetch and flushes the two younger instructions. A target that is
+not 4-byte aligned is recorded as `fetch_misaligned` — the only exception that has to be
+detected in EX, because it depends on the branch decision.
+
+**Address adder.** `mem_addr = rs1 + imm`. This value goes two places: into EX/MEM as usual,
+and — **bypassing EX/MEM** — to the data cache as `data_pre_addr`, so the cache can read its
+arrays on the same clock edge the instruction enters MEM (see [5.4](#54-the-data-cache)).
+
+### 4.4 MEM — data access, CSRs, the trap point
+
+**Data access.** Stores replicate their data across the word (`{4{byte}}`, `{2{half}}`) and
+drive per-byte enables (`0001 << addr[1:0]`, `0011`/`1100`, `1111`); the memory writes only the
+enabled lanes. Loads receive the whole aligned word and extract the byte or halfword lane,
+sign- or zero-extending it. While the data cache is not ready, `stall_mem` holds the pipeline.
+
+**CSR access** happens here, in program order. The operand is `rs1` (or the zero-extended
+5-bit immediate for the `…I` forms); the new value is computed (`W`: replace, `S`: set bits,
+`C`: clear bits) and the old value becomes the writeback value. `CSRRS`/`CSRRC` with
+`rs1 = x0` read without writing.
+
+**Exception classification** also happens here, from fields already registered in EX/MEM
+(this used to sit at the end of the longest path in EX, and moving it here shortened that
+path). The trapping instruction:
+
+- has written nothing architectural yet (a trapping store never reaches memory);
+- has every older instruction already retired;
+- has every younger instruction still in IF/ID/EX, where it is simply flushed.
+
+That is what makes exceptions **precise** with no extra recovery hardware.
+
+**`MRET`** redirects to `mepc`. **`FENCE.I`** holds in MEM until both caches report done, then
+redirects to `pc + 4` ([5.6](#56-fencei-end-to-end)).
+
+**Writeback select** chooses the loaded value, the CSR value, or the ALU/link result.
+
+### 4.5 WB — writeback and retirement
+
+The MEM/WB register writes `rd` (suppressed for `x0` and for trapping instructions) and drives
+the **RVFI retirement port**: `valid, order, insn, trap, rd_addr, rd_wdata, pc_rdata, pc_wdata`.
+`rd_wdata` reads zero whenever `rd = x0` — `ret` computes a link address only to throw it away,
+and reporting that value would diverge from every reference model.
+
+### 4.6 Hazards, stalls and flushes
+
+<p align="center">
+  <img src="docs/img/hazards.svg" alt="Pipeline timing diagrams for forwarding, load-use stall and taken branch" width="92%">
+</p>
+
+| Situation | Detected in | Cost | Mechanism |
 |---|---|---|---|
-| RV32I single-cycle | 1.000 | 216.7 | 2123 / 1438 / 0 / 0 |
-| RV32I 5-stage pipeline | 0.612 | 259.0 | 2718 / 2446 / 0 / 0 |
-| RV32I pipeline + L1 I$/D$ (4 KiB each) | - | 214.4 | 5740 / 3654 / 10 / 0 |
+| ALU result needed by the next instruction | EX | 0 | EX/MEM → EX forward |
+| Any result needed two instructions later | EX | 0 | MEM/WB → EX forward |
+| Value written by WB needed in ID the same cycle | ID | 0 | WB → ID bypass |
+| Load or CSR read followed by its consumer | ID | 1 cycle | `stall_ld_use`: hold ID, bubble into EX |
+| Taken branch or jump | EX | the two younger instructions | `flush_branch` + fetch redirect |
+| Trap, `MRET`, `FENCE.I` completion | MEM | everything younger | `flush_trap` + fetch redirect |
+| Data cache miss / `FENCE.I` waiting | MEM | until ready | `stall_mem` |
+| Instruction not yet fetched | IF | absorbed | buffer empty → bubble, no freeze |
 
-The `rv32_soc` row has no ideal-memory IPC: its IPC depends on main-memory latency, so
-it is reported in the table below. Its Fmax excludes main memory.
+**`stall_mem` in detail.** While MEM waits, the fetch unit stops handing out instructions,
+ID/EX and EX/MEM hold, and MEM/WB receives a bubble (nothing retires twice). One detail here
+was a real bug found by the verification flow: the instruction held in EX may have been taking
+an operand from MEM/WB, and MEM/WB empties on the first stall cycle. The held operands
+therefore **re-latch their forwarded values every stall cycle**, capturing whatever was being
+forwarded before its source leaves the pipeline.
 
-With 10 main-memory wait states, cycles to completion (all runs match Spike):
+**Priority.** An older instruction's decision always wins: trap › `mret` › `FENCE.I` › taken
+branch. A trap in MEM therefore cancels a branch decision being made in EX in the same cycle.
 
-| Program | Uncached pipeline | Cached | Speedup | I$ hit rate | D$ hit rate |
-|---|---|---|---|---|---|
-| hello.c | 1439 | 880 | 1.64x | 92.9% | 82.6% |
-| cachestress.c | 167919 | 126479 | 1.33x | 99.9% | 36.5% |
+### 4.7 Traps and the CSR file
 
-`cachestress.c` is written to thrash the data cache, so its low D$ hit rate reflects the
-access pattern. At 1 wait state the cached system is slower on both programs (hello.c 575
-vs 507 cycles; cachestress.c 67270 vs 51423); see `results/experiments.md`, section 6.
+On a trap, `csr_file` records `mepc ← pc`, `mcause`, `mtval`, pushes `MIE` into `MPIE` and
+clears `MIE`; the core redirects to `mtvec`. `MRET` pops `MPIE` back into `MIE` and returns to
+`mepc`.
 
-Both IPC figures above are for **ideal memory**, the one case where the pipeline's prefetch
-buffer is pure overhead. Under any real memory latency the ranking flips (section 5.1),
-so do not read IPC × Fmax from this table as the pipeline's real-world throughput.
+Two implementation points are worth knowing:
 
-**On reading these numbers.** IPC alone is misleading: a single-cycle datapath buys its
-perfect IPC with a slow clock. MIPS is only comparable *within* one ISA, because it counts
-instructions rather than work — an RV32I core scores far higher MIPS than an RV32IM core on
-the same C source purely because it executes many more instructions to compute the same
-answer.
-
-The synthesised Fmax is also **optimistic for a single-cycle design specifically**:
-`magic_mem` is excluded from synthesis as a simulation construct, so instruction fetch and
-data access time sit outside every measured path — which a real single-cycle core cannot do.
+- **Write intent vs. commit.** The core drives the CSR write enable as pure *intent* (“this is
+  a CSR instruction that writes”). Legality (`illegal_o`) is computed from that intent. The
+  actual register update is gated inside `csr_file` by `stall_i`. Gating the write enable in
+  the core instead creates a combinational loop — *write enable → legality → trap → stall →
+  write enable* — which an earlier version had, and which made every timing number measured
+  on it meaningless. Synthesis now refuses to report timing for any design with a loop.
+- **`minstret` counts an instruction as it leaves MEM**, the same stage where CSRs are read and
+  written. Counting at WB made a counter read one instruction behind and let a counter write
+  cancel the wrong increment.
 
 ---
 
-## 7. Repository layout
+## 5. The memory hierarchy
+
+The cached system puts a split L1 between the pipeline and a slow main memory:
+
+```
+core ──instr──▶ icache ─┐
+                         ├──▶ mem_arbiter ──line port (16 bytes)──▶ main memory
+core ──data───▶ dcache ─┘
+```
+
+### 5.1 Cache organisation
+
+<p align="center">
+  <img src="docs/img/cache.svg" alt="Two-way set-associative cache lookup with address split, tag compare and way select" width="100%">
+</p>
+
+Both caches use the same geometry:
+
+| Parameter | Value |
+|---|---|
+| Capacity | 4 KiB each |
+| Line size | 16 bytes (4 words) |
+| Associativity | 2-way |
+| Sets | 128 (each way spans 2 KiB of address space) |
+| Address split | tag `[31:11]` (21 bits) · index `[10:4]` (7 bits) · word `[3:2]` · byte `[1:0]` |
+| Replacement | 1 LRU bit per set; an empty way is used first |
+| Tag and data arrays | synchronous-read block RAM, one tag RAM (128 × 21) and one data RAM (128 × 128) per way |
+| Valid / dirty / LRU bits | flip-flops |
+| Blocking | one miss at a time |
+
+A lookup reads both ways of the indexed set, compares both stored tags with the address tag,
+and qualifies each match with that way's valid bit. The hitting way's 128-bit line goes through
+a way mux, then a word select picks the 32-bit word.
+
+**Why the valid, dirty and LRU bits are flip-flops, not RAM:** reset must clear them, and
+`FENCE.I` must clear every valid bit in the instruction cache in one cycle. Block RAM can do
+neither.
+
+### 5.2 The block-RAM template
+
+`sram_1r1w` is a simple dual-port RAM — one synchronous read port and one write port with
+independently enabled lanes — written in the exact form Vivado maps to block RAM
+(`ram_style = "block"`). All eight cache arrays are instances of it; synthesis confirms ten
+block-RAM tiles.
+
+Two ports are required, not one. A store hit writes its line at the end of MEM on the same
+clock edge that the *next* access reads its set, and a single-port RAM cannot do both.
+
+A same-address read during a write returns the **old** data in this model. Real block RAM's
+behaviour depends on its configured mode, so the caches never depend on it: they detect the
+collision and read again.
+
+### 5.3 The instruction cache
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> RUN
+    RUN --> RUN : hit, or idle
+    RUN --> REFILL : miss (gnt drops)
+    REFILL --> RUN : line arrives, answer from it
+    RUN --> INV_DONE : inv_req and no lookup owed
+    INV_DONE --> RUN : inv_req drops
+```
+
+- **Protocol.** A request is accepted on `req && gnt`. Exactly one response (`rvalid`) comes
+  back per accepted request, in order — the fetch unit relies on that pairing.
+- **Hit.** The arrays are read at the request address on the accept edge; the next cycle the
+  tags are compared and the instruction is returned. A new request can be accepted in that
+  same cycle, so hits stream at **one instruction per cycle**.
+- **Miss.** `gnt` drops, the line is fetched over the line port, written into the victim way,
+  and the instruction is answered directly from the returned line.
+- **Redirects never abort a refill.** The fetch unit's discard counter drops the response
+  instead, which is far simpler than cancelling a transfer half-way.
+- **`FENCE.I`** clears every valid bit at once, but only after any owed response or in-flight
+  refill has completed.
+
+### 5.4 The data cache
+
+```mermaid
+stateDiagram-v2
+    [*] --> RUN
+    RUN --> RUN : hit, idle, or same-set re-read
+    RUN --> WB : miss, victim dirty
+    RUN --> REFILL : miss, victim clean
+    WB --> REFILL : old line written back
+    REFILL --> REPLAY : new line written
+    REPLAY --> RUN : arrays re-read, access hits
+    RUN --> FL_CHECK : flush_req (FENCE.I)
+    FL_CHECK --> FL_CHECK : line clean, next
+    FL_CHECK --> FL_READ : line valid and dirty
+    FL_READ --> FL_WB : line captured
+    FL_WB --> FL_CHECK : written back, next
+    FL_CHECK --> FL_DONE : last line checked
+    FL_WB --> FL_DONE : last line written
+    FL_DONE --> RUN : flush_req drops
+```
+
+**One-cycle hits from a synchronous RAM.** A block RAM returns data the cycle *after* it is
+given an address. To finish a hit inside MEM, the cache must already have read the right set
+when the instruction arrives — so the core sends the address of the access that will be in MEM
+**next** cycle, `data_pre_addr`, straight from the EX address adder. While MEM is stalled the
+core repeats the held address instead, so the arrays keep presenting the right set. This is a
+contract between the core and the cache, and breaking it would corrupt data silently, so a
+**simulation assertion** checks on every lookup that the arrays were read at the set being
+looked up.
+
+**Hit.** A load returns the whole aligned word (the core extracts bytes). A store writes its
+enabled byte lanes into the hitting way and sets that line's dirty bit. Both take one cycle,
+with no stall.
+
+**Miss.** The victim is an empty way if there is one, otherwise the LRU way. If the victim is
+valid and dirty it is written back first (`WB`), then the new line is fetched (`REFILL`). The
+final `REPLAY` cycle re-reads the arrays, so the original access then completes **through the
+normal hit path** — load and store hits are handled in exactly one place.
+
+**The same-set collision.** A store hit writes set *S* on the same clock edge that reads the
+set for the next access. If that is also *S*, the read returns stale data. The cache detects
+the case and holds the next access one cycle to read again. The data-cache testbench proves this
+guard is necessary: with it disabled, the directed store-then-load tests fail.
+
+**Flush.** `FENCE.I` walks all 256 lines (128 sets × 2 ways), writes back each valid dirty line
+and clears its dirty bit; lines stay valid.
+
+**Statistics.** Hit and miss pulses are exported for measurement. A miss's eventual completion
+is not counted as a hit, so `hits / (hits + misses)` is a true hit rate.
+
+### 5.5 Arbiter, line port and main memory
+
+**The line port.** Every cache-to-memory link uses one simple protocol: the requester drives
+`req, we, addr[31:4], wdata[127:0]` and holds them steady until the responder raises `ready`
+for one cycle with `rdata[127:0]`. A whole 16-byte line moves per transaction. An AXI bridge or
+an L2 cache would attach to exactly this interface.
+
+**`mem_arbiter`** shares one port between the two caches. An idle arbiter adds no latency; the
+**data side wins a tie**, because a pending data access stalls the whole pipeline while the
+fetch buffer can ride out a short delay; and a granted side keeps the port until its transfer
+finishes, so a write-back and a refill are never interleaved.
+
+**`main_mem`** (simulation only) serves lines after `LATENCY` wait states — an access takes
+`LATENCY + 1` cycles, and 0 answers in the same cycle. It stores 32-bit words so ordinary
+program hex files load directly, and a write commits only on its `ready` cycle.
+
+### 5.6 FENCE.I, end to end
+
+`FENCE.I` guarantees that instructions written by stores are the ones executed afterwards.
+With separate caches that needs both caches and the pipeline to cooperate, in a fixed order:
+
+```mermaid
+sequenceDiagram
+    participant C as Core (FENCE.I in MEM)
+    participant D as D-cache
+    participant I as I-cache
+    participant M as Main memory
+    C->>D: flush_req = 1 (pipeline holds)
+    loop all 256 lines
+        D->>M: write back each valid, dirty line
+    end
+    D->>I: flush done, so inv_req = 1
+    I->>I: deliver any owed response, then clear every valid bit
+    I->>C: inv_done = flush_done
+    C->>C: retire FENCE.I, squash younger, refetch pc + 4
+    C->>D: flush_req = 0, both caches return to RUN
+```
+
+The order matters. The instruction cache is invalidated only *after* the data cache has written
+everything back, so any line it refills afterwards comes from up-to-date memory. Instructions
+prefetched before the fence may be stale, so the core discards them and refetches from
+`pc + 4`. The official `rv32ui-p-fence_i` test, which writes instructions and then executes
+them, passes through the caches.
+
+---
+
+## 6. The single-cycle baseline
+
+`core_rv32i` executes every instruction in one clock period: fetch, decode, register read, ALU,
+memory access, CSR access and writeback all sit in one combinational path between two clock
+edges. It uses the same decoder, ALU, register file and CSR file as the pipeline, supports the
+same ISA and traps, and emits the same RVFI trace. With ideal memory its IPC is exactly 1.0.
+
+It exists as the reference point. Its synthesised Fmax (216.7 MHz) is **optimistic** for a real
+single-cycle machine, because memory is outside the synthesised design: a real single-cycle CPU
+must fit an instruction fetch *and* a data access inside its clock period.
+
+---
+
+## 7. The verification ecosystem
+
+<p align="center">
+  <img src="docs/img/verification.svg" alt="Verification and build ecosystem: container, Spike lockstep comparison, regression, lint and synthesis gates" width="100%">
+</p>
+
+Everything in this README is backed by a check that can be re-run with one `make` command.
+
+### 7.1 A pinned, reproducible toolchain
+
+All simulation and compilation runs inside one Docker image, built from `docker/Dockerfile`:
+
+| Tool | Version | How it is pinned |
+|---|---|---|
+| Ubuntu base | 24.04 | by image **digest**, not tag (a tag is re-pointed at new releases) |
+| `riscv64-unknown-elf-gcc` | 13.2.0 | from apt; `make tools-check` **fails** if the version drifts, because a different compiler changes instruction counts and invalidates comparisons |
+| Verilator | 5.026 | built from source at a fixed tag |
+| Spike | 1.1.0 | built from source **with `--enable-commitlog`**, without which Spike silently emits no trace; `tools-check` probes for it |
+| oss-cad-suite | 2024-09-01 | appended to `PATH` so its bundled Verilator cannot shadow the pinned one |
+| Python 3 | Ubuntu 24.04 package | runs the comparison and regression scripts; `make test-scripts` installs pytest for the comparator's own tests |
+
+Vivado 2022.2 runs natively on Windows for synthesis. The Makefile uses only relative paths
+(the repository path contains a space, which GNU Make cannot escape in prerequisites).
+
+### 7.2 Lockstep comparison against Spike
+
+The core of the flow: run the same program on the RTL and on **Spike**, the official RISC-V
+reference simulator, and compare them **one retired instruction at a time**.
+
+1. `gcc -march=rv32i` compiles the program with `crt0.S` and `link.ld` (base `0x8000_0000`,
+   Spike's default memory base; `tohost` at `0x8001_0000`). `crt0.S` zeroes every register so
+   both sides start from identical state.
+2. The ELF becomes a word-per-line hex image for the simulated memory.
+3. **Spike** runs the ELF with `--isa=rv32i_zicsr --priv=m -l --log-commits` and writes a
+   commit log: PC, instruction, destination register and value for every instruction.
+4. **Verilator** simulates the testbench + RTL; the testbench writes one line per RVFI
+   retirement: `order pc insn rd value`.
+5. **`scripts/compare_trace.py`** diffs the two from `_start` to a labelled stop point and
+   reports the first divergence with both sides' records.
+
+Details the comparator gets right:
+
+- **Trapping instructions** appear in neither trace (Spike's commit log omits them), so the
+  testbench skips them too. This does not weaken trap checking: a missing or extra trap shifts
+  every later record and is reported at once.
+- **The stop point.** The RTL testbench stops when the `tohost` store completes, but Spike runs
+  on until its host interface notices. Both traces are compared up to the same labelled
+  instruction (`_finish_loop`, or `write_tohost` in riscv-tests) rather than truncated to equal
+  length, which would hide a hung core.
+- **Exit codes**: `0` match, `1` divergence (including a trace that ends early on either side),
+  `2` a line that looks like a record but cannot be parsed — a silently skipped line would shift
+  every later index and blame the wrong instruction.
+- **Completion on the handshake.** Testbenches end on the `tohost` store's *handshake*, not its
+  request: behind a cache or slow memory the request is visible for many cycles before the store
+  completes, and ending early cuts the trace short.
+- The comparator has **16 pytest cases of its own** (`make test-scripts`).
+
+### 7.3 The compliance regression
+
+`make regress` runs the official **riscv-tests** suite (`rv32ui` user-level and `rv32mi`
+machine-level tests, p-mode, 58 tests) through `scripts/run_regress.py`. Every test must pass
+**two independent gates**:
+
+1. **The suite's own check**: the test writes `1` to `tohost` on success, or the failing
+   sub-test number on failure.
+2. **The trace check**: the RTL trace matches Spike up to `write_tohost`.
+
+Spike's log is deleted before each run and must be freshly written, so a failed Spike
+invocation can never be compared against a stale log.
+
+**Result: 54/58 on every design.** The pipeline was also regressed at 1, 2 and 4 wait states and
+the cached system at 1, 4 and 10, with the same result. The four failures are documented and
+listed in the script, so any new failure is reported as unexpected:
+
+| Test | Why it does not pass |
+|---|---|
+| `rv32ui-p-ma_data` | requires hardware support for misaligned loads/stores; this core traps instead, which the specification permits |
+| `rv32mi-p-breakpoint` | needs the debug trigger module (`tselect`, `tdata*`), not implemented |
+| `rv32mi-p-mcsr` | passes its own check; differs only in `marchid`, an implementation-defined identity value |
+| `rv32mi-p-pmpaddr` | needs implemented PMP regions; zero are implemented |
+
+### 7.4 Unit testbenches
+
+Fifteen self-checking testbenches, each printing `PASS` or failing with a precise message:
+
+| Testbench | What it proves |
+|---|---|
+| `tb_rv32_pkg` | every ISA constant and encoding in the package |
+| `tb_alu` | every ALU operation, including shift masking and signed compares |
+| `tb_regfile` | two reads, one write, `x0` behaviour |
+| `tb_decoder` | every instruction format, immediate reassembly, illegal encodings, `FENCE.I` |
+| `tb_csr_file` | CSR reads/writes, legality, trap entry/`mret`, counters, stall gating |
+| `tb_magic_mem`, `tb_latency_mem` | the memory models' latency and byte enables |
+| `tb_fetch_unit` | prefetching, back-pressure (random grant refusal), redirects in flight, back-to-back redirects |
+| `tb_sram_1r1w` | read latency, lane-masked writes, the documented collision behaviour |
+| `tb_main_mem` | exact wait-state latency at 0/1/4, line layout, write-once commit |
+| `tb_mem_arbiter` | tie-breaking, no lost or duplicated transfers, no interleaving |
+| `tb_icache` | one response per accepted request in order, LRU choice, invalidation during a lookup and during a refill, 4,000+ random fetches |
+| `tb_dcache` | dirty eviction, LRU choice, same-set collision, true hit counting, flush; 6,000 random loads/stores of every size checked against a reference memory, and main memory compared word for word after every flush |
+| `tb_core_rv32i_smoke`, `tb_core_p5_smoke` | a short program on each core, checked register by register |
+
+Several tests were also proven **load-bearing** by deliberately breaking the RTL and confirming
+the test fails — for example, the cache LRU update and the data cache's collision guard.
+
+### 7.5 Programs
+
+| Program | Purpose |
+|---|---|
+| `verif/prog/hello.c` | small mixed workload: arithmetic, arrays, loops, multiply/divide via libgcc |
+| `verif/prog/cachestress.c` | defeats the data cache on purpose: three arrays aligned to one cache way contend for two ways (conflict misses and dirty evictions), then an 8 KiB stream (capacity misses), then byte and halfword stores into cached lines; 32,000+ instructions |
+| `verif/prog/smoke.S` | the hand-checked program used by the smoke testbenches |
+| `verif/prog/crt0.S`, `link.ld` | startup code and memory map shared by all programs |
+
+### 7.6 Build safeguards
+
+- **`make lint` gates everything.** Verilator `--lint-only -Wall` runs on every top-level module,
+  and any warning fails the build. Warnings are fixed at their cause, never waived with pragmas.
+  Every simulation target depends on it.
+- **Compile failures stop the run, and builds start clean.** Simulation object directories are
+  deleted before every build, so a stale binary can never run and report a result for code that
+  no longer compiles.
+- **Simulation assertions** run in every simulation: the fetch-unit occupancy invariant and the
+  data-cache early-address contract.
+- **Synthesis gates** (`scripts/synth.tcl`): the run **fails** if Vivado's timing report shows any
+  combinational loop, and the cached system **fails** if its arrays were not inferred as block
+  RAM. Fmax is computed as `1 / (target period − worst negative slack)`.
+- `scripts/collect_results.py` regenerates `results/comparison.md` from the recorded JSON, so
+  the published numbers always come from tool output.
+
+---
+
+## 8. Results
+
+All numbers come from `results/raw/*.json` and `results/experiments.md`. FPGA figures are
+**post-synthesis estimates** for `xck26-sfvc784-2LV-c`; nothing has been placed and routed yet.
+
+### FPGA implementation
+
+<p align="center">
+  <img src="docs/img/chart_fpga.svg" alt="LUTs, flip-flops and Fmax for the three designs" width="88%">
+</p>
+
+| Design | Fmax | LUTs | Flip-flops | Block RAM | DSP | Share of XCK26 LUTs |
+|---|---|---|---|---|---|---|
+| Single-cycle core | 216.7 MHz | 2,123 | 1,438 | 0 | 0 | 1.8% |
+| Pipeline | 259.0 MHz\* | 2,718 | 2,446 | 0 | 0 | 2.3% |
+| **Pipeline + L1 caches** | **214.4 MHz** | **5,740** | **3,654** | **10** | **0** | **4.9%** |
+
+\* Measured before the cache-interface changes to the core; the cached-system row is current.
+
+The cached system's critical path runs from a data-cache tag RAM, through the tag compare and
+hit logic, to the write enable of a data-cache data RAM — the store-hit path.
+
+### Performance under memory latency
+
+<p align="center">
+  <img src="docs/img/chart_latency.svg" alt="Cycles to run hello.c versus memory latency for the three designs" width="80%">
+</p>
+
+Cycles to run `hello.c` (about 297 instructions):
+
+| Wait states | Single-cycle | Pipeline, no cache | Pipeline + caches |
+|---|---|---|---|
+| 0 | 297 | 484 | — |
+| 1 | 595 | 507 | 575 |
+| 4 | 1,489 | 809 | 676 |
+| 10 | 3,277 | 1,439 | **880** |
+| 20 | — | — | 1,220 |
+
+At 10 wait states the cached system needs **3.7× fewer cycles than the single-cycle core** and
+**1.64× fewer than the uncached pipeline**. With ideal memory (0 wait states) the single-cycle
+core is fastest in cycles — ideal memory is the one case a pipeline cannot win, which is why
+every comparison here is made under realistic latency.
+
+**Cache stress test** (`cachestress.c`, 32,092 instructions) at 10 wait states:
+
+| | Uncached pipeline | Pipeline + caches |
+|---|---|---|
+| Cycles | 167,919 | 126,479 (**1.33× fewer**) |
+| IPC | 0.191 | 0.254 |
+| I-cache hit rate | — | 99.9% (42,199 / 42,237) |
+| D-cache hit rate | — | 36.5% (2,580 / 7,073), by design of the test |
+
+On `hello.c`, hit rates are 92.9% (instruction) and 82.6% (data).
+
+**Honest caveats.**
+
+- At **1 wait state the caches are slower** on both programs: 575 vs 507 cycles on `hello.c`,
+  and 67,270 vs 51,423 on `cachestress.c`. The cause was not measured; refilling a whole 16-byte
+  line on every miss is the likely explanation.
+- **Wall-clock time** must also account for the clock: the caches lower Fmax from about 259 to
+  214.4 MHz. On the stress test that leaves roughly a 1.1× real-time gain at 10 wait states, and
+  roughly 1.35× on `hello.c`.
+- **No standard benchmark yet.** CoreMark and Dhrystone have not been run, so this design cannot
+  yet be ranked against published cores.
+
+---
+
+## 9. Design decisions and trade-offs
+
+| Decision | Why | Cost |
+|---|---|---|
+| **Branches resolve in EX**, no prediction | Resolving in ID needs a comparator and extra forwarding into ID. An ID-stage predictor was built and measured: it cut cycles by about 8% but added a level to the redirect path, and the synthesis results available at the time showed a larger loss in Fmax, so it was reverted (those Fmax figures predate the loop fix — see `results/experiments.md` §3) | Every taken branch squashes two instructions |
+| **Traps and CSRs at MEM** | Exceptions are precise for free; CSR instructions need no hazard logic because they access the file in order at one stage | CSR reads interlock like loads |
+| **Decoupled fetch with a prefetch buffer** | Lets fetch latency overlap with execution; without it the pipeline lost to the single-cycle core under latency | One extra cycle before decode with ideal memory |
+| **Exception classification in MEM** | Its priority mux and 32-bit `mtval` select were at the end of the longest EX path | None — every input is already registered |
+| **Synchronous-read block-RAM caches + early address** | Real FPGA memories; one-cycle hits without an extra stage | The early-address contract between core and cache (guarded by an assertion) and a longer path into the RAM address |
+| **Write-back, write-allocate data cache** | Stores stay in the cache; memory traffic only on eviction | Dirty bits, write-back on eviction, a flush walk for `FENCE.I` |
+| **Blocking caches** | Simple, easy to verify; the foundation for later additions | No hit-under-miss |
+| **Re-read on a same-set collision instead of bypassing** | Avoids depending on block-RAM collision modes and avoids a bypass network | One cycle on a rare case |
+| **Refills are never aborted** | The fetch unit already discards stale responses | A redirected miss still pays for its line |
+| **RVFI trace + Spike comparison** | Independent of microarchitecture; finds the first wrong instruction, not just a failed test | Spike omits trapping instructions, which the testbenches mirror |
+
+---
+
+## 10. Bugs the verification flow caught
+
+These were real defects in this design, each invisible to at least one weaker form of testing:
+
+| Bug | Why it hid | What exposed it |
+|---|---|---|
+| **Combinational loop** through the CSR write enable, legality, trap and stall | Simulation still passed; Vivado silently broke the loop for timing analysis | Making lint warnings fatal; Vivado's loop check is now a hard gate |
+| **Stale binaries reporting MATCH** — a compile failure was masked and the previous executable ran | The output looked like success | A deliberate syntax error; the build now stops and rebuilds from clean |
+| **Lost forwarding during memory stalls** — a held EX instruction fell back to a stale operand | Every earlier test used ideal memory, where nothing stalls | Running riscv-tests with one wait state: five store tests failed |
+| **Fetch unit forgot owed responses** across back-to-back redirects | Needs a redirect in each of two consecutive cycles, with latency ≥ 2 | A targeted testbench case at latency 3 |
+| **`minstret` off by one** after a counter write | Two back-to-back counter writes cancelled the error | An instruction-cache miss between them, in `rv32mi-p-instret_overflow` |
+| **Cache hit statistics double-counted misses** | Did not affect correctness, only every hit rate | A directed one-load check in the cache testbench |
+
+---
+
+## 11. Limitations and roadmap
+
+**Not implemented yet:** multiply/divide (M extension), compressed instructions, interrupts,
+user/supervisor modes, an MMU, PMP enforcement, branch prediction, non-blocking caches. The
+design has been synthesised but not placed, routed or run on the board. `minstret` still counts
+instructions that trap (`ECALL`, `EBREAK`), which the privileged specification excludes.
+
+**Planned next, each building on the current interfaces:**
+
+- **Branch target buffer** in the fetch stage, to stop paying for every taken branch.
+- **L2 cache** between the arbiter and main memory (the line port is designed for it).
+- **Non-blocking data cache** with miss-status holding registers.
+- **M extension**, then **custom instructions** in the reserved custom opcode space
+  (`0x0B`, `0x2B`, `0x5B`, `0x7B`).
+- **CoreMark** to compare against published cores.
+
+---
+
+## 12. Repository layout and make targets
 
 ```
 rtl/
-  common/     rv32_pkg.sv  alu.sv  regfile.sv  decoder.sv  csr_file.sv
-  core/       core_rv32i.sv  core_rv32i_p5.sv  fetch_unit.sv
-  mem/        sram_1r1w.sv  icache.sv  dcache.sv  mem_arbiter.sv
-              main_mem.sv  latency_mem.sv  magic_mem.sv   (last three: simulation only)
-  soc/        rv32_soc.sv
+  common/   rv32_pkg.sv        ISA constants, decoded_t, ALU op encoding
+            alu.sv             11-operation combinational ALU
+            regfile.sv         32 x 32, 2R/1W, x0 = 0
+            decoder.sv         instruction -> decoded_t, illegal detection
+            csr_file.sv        machine-mode CSRs, counters, trap entry / mret
+  core/     core_rv32i.sv      single-cycle core
+            core_rv32i_p5.sv   five-stage pipeline
+            fetch_unit.sv      decoupled fetch with prefetch buffer
+  mem/      sram_1r1w.sv       block-RAM template (synthesisable)
+            icache.sv          L1 instruction cache
+            dcache.sv          L1 data cache
+            mem_arbiter.sv     two caches -> one line port
+            main_mem.sv        line memory with wait states   (simulation only)
+            latency_mem.sv     word memory with wait states   (simulation only)
+            magic_mem.sv       zero-latency memory            (simulation only)
+  soc/      rv32_soc.sv        pipeline + caches + arbiter
 verif/
-  tb/         one self-checking testbench per module, plus the trace-dumping top
-  prog/       crt0.S, linker script, C benchmark, smoke program
-scripts/
-  compare_trace.py    RVFI vs Spike commit-log diff  (+ its own unit tests)
-  run_regress.py      riscv-tests runner, dual-gated
-  synth.tcl           Vivado batch synthesis
-  collect_results.py  regenerates results/comparison.md
-  env_check.sh        host prerequisites
-docker/       Dockerfile with every tool version pinned
-results/      comparison.md and the raw measurements behind it
+  tb/       15 unit/smoke testbenches + trace testbenches (tb_core_rv32i, tb_core_p5,
+            tb_core_rv32i_lat, tb_core_p5_lat, tb_soc)
+  prog/     crt0.S  link.ld  hello.c  cachestress.c  smoke.S
+scripts/    compare_trace.py (+ tests)  run_regress.py  synth.tcl  collect_results.py
+            make_diagrams.py  env_check.sh
+docker/     Dockerfile (every tool version pinned)
+results/    comparison.md  experiments.md  raw/*.json
+docs/img/   the figures in this README (generated by scripts/make_diagrams.py)
 ```
 
+| Target | What it does |
+|---|---|
+| `make env-check` | checks host prerequisites |
+| `make docker-build` | builds the pinned toolchain image |
+| `make tools-check` | verifies tool versions, GCC drift and Spike commit logging |
+| `make lint` | Verilator `-Wall` on every top; fails on any warning |
+| `make tb TB=<name>` | runs one unit testbench |
+| `make cosim PROG=<prog> CORE_TB=<tb>` | compiles a program, runs it on RTL and Spike, compares traces |
+| `make cosim-lat PROG=<prog> CORE_TB=<tb> LAT=<n>` | the same, with `n` memory wait states |
+| `make fetch-tests` | clones riscv-tests |
+| `make regress CORE_TB=<tb> [LAT=<n>]` | runs the compliance suite with both gates |
+| `make test-scripts` | runs the comparator's own pytest suite |
+| `make synth CORE=<top> TARGET=<ns>` | Vivado synthesis with the loop and block-RAM gates |
+| `make results` | regenerates `results/comparison.md` |
+
 ---
 
-## 8. Roadmap
+## 13. References
 
-The verification harness is deliberately microarchitecture-independent: it consumes an
-RVFI retirement port, so a different core implementing the same interface is validated by
-the same flow with no changes. Planned next:
-
-- **Branch target buffer** in the fetch stage.
-- **L2 cache** between the arbiter and main memory.
-- **Non-blocking data cache** (miss status holding registers).
-- **M extension**, then **custom instructions** in the reserved custom opcode
-  space (`0x0B`, `0x2B`, `0x5B`, `0x7B`).
-
----
-
-## References
-
-- [RISC-V ratified specifications](https://docs.riscv.org/)
-- [RVFI — RISC-V Formal Interface](https://yosyshq.readthedocs.io/projects/riscv-formal/en/latest/rvfi.html)
-- [riscv-tests](https://github.com/riscv-software-src/riscv-tests)
+- *Digital Design and Computer Architecture, RISC-V Edition* — Harris & Harris
+- *Computer Organization and Design, RISC-V Edition* — Patterson & Hennessy
+- *Computer Architecture: A Quantitative Approach* — Hennessy & Patterson
+- [The RISC-V Instruction Set Manual (unprivileged and privileged)](https://riscv.org/technical/specifications/)
 - [Spike, the RISC-V ISA simulator](https://github.com/riscv-software-src/riscv-isa-sim)
-- [CV32E40P custom instruction set extensions](https://cv32e40p.readthedocs.io/en/latest/instruction_set_extensions.html)
+- [riscv-tests](https://github.com/riscv-software-src/riscv-tests)
+- [RVFI — the RISC-V Formal Interface](https://yosyshq.readthedocs.io/projects/riscv-formal/en/latest/rvfi.html)
+- [Verilator](https://www.veripool.org/verilator/)

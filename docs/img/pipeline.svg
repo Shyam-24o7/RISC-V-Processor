@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980" role="img" aria-label="Five-stage pipeline datapath">
+<title>Five-stage pipeline datapath</title>
+<defs><marker id="ah0" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f172a"/></marker><marker id="as0" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f172a"/></marker><marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker><marker id="as1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ea580c"/></marker><marker id="as2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ea580c"/></marker><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#dc2626"/></marker><marker id="as3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#dc2626"/></marker><marker id="ah4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0d9488"/></marker><marker id="as4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0d9488"/></marker><marker id="ah5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9333ea"/></marker><marker id="as5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9333ea"/></marker><marker id="ah6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0284c7"/></marker><marker id="as6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0284c7"/></marker><marker id="ah7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#16a34a"/></marker><marker id="as7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#16a34a"/></marker><marker id="ah8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e11d48"/></marker><marker id="as8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e11d48"/></marker><marker id="ah9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ca8a04"/></marker><marker id="as9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ca8a04"/></marker><marker id="ah10" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4f46e5"/></marker><marker id="as10" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4f46e5"/></marker><marker id="ah11" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/></marker><marker id="as11" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/></marker></defs>
+<rect width="1600" height="980" rx="14" fill="#ffffff"/>
+<text x="30" y="40" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="20" text-anchor="start" font-weight="700" fill="#0f172a">core_rv32i_p5 — datapath, forwarding and control</text>
+<text x="30" y="62" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12.5" text-anchor="start" font-weight="normal" fill="#475569">Pipeline registers are the dark bars. The fetch unit's buffer head is the IF/ID interface, so there is no separate IF/ID register.</text>
+<rect x="30" y="84" width="240" height="34" rx="8" fill="#e0f2fe" fill-opacity="1" stroke="#0284c7" stroke-width="1.6"/>
+<text x="150.0" y="107" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="700" fill="#0284c7">IF</text>
+<rect x="282" y="84" width="272" height="34" rx="8" fill="#ede9fe" fill-opacity="1" stroke="#7c3aed" stroke-width="1.6"/>
+<text x="418.0" y="107" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="700" fill="#7c3aed">ID</text>
+<rect x="600" y="84" width="306" height="34" rx="8" fill="#fef3c7" fill-opacity="1" stroke="#d97706" stroke-width="1.6"/>
+<text x="753.0" y="107" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="700" fill="#d97706">EX</text>
+<rect x="950" y="84" width="322" height="34" rx="8" fill="#dcfce7" fill-opacity="1" stroke="#16a34a" stroke-width="1.6"/>
+<text x="1111.0" y="107" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="700" fill="#16a34a">MEM</text>
+<rect x="1312" y="84" width="258" height="34" rx="8" fill="#ffe4e6" fill-opacity="1" stroke="#e11d48" stroke-width="1.6"/>
+<text x="1441.0" y="107" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="700" fill="#e11d48">WB</text>
+<polyline points="1304,266 1336,266 1336,134 385,134 385,156" fill="none" stroke="#e11d48" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#ah8)"/>
+<rect x="917.88" y="121.92" width="164.24" height="17.439999999999998" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="1000" y="134" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#e11d48">writeback   rd ← wb_data</text>
+<polyline points="520,134 520,176" fill="none" stroke="#ea580c" stroke-width="1.7" stroke-linejoin="round" stroke-dasharray="3 3" marker-end="url(#ah2)"/>
+<rect x="534.3" y="136.4" width="51.4" height="16.8" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="560" y="148" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="10" text-anchor="middle" font-weight="normal" fill="#ea580c">WB → ID</text>
+<rect x="262" y="150" width="12" height="570" rx="3" fill="#ffffff" fill-opacity="1" stroke="#0284c7" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="268" y="640" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#0284c7" transform="rotate(-90 268 640)">buffer head = IF/ID</text>
+<rect x="562" y="150" width="24" height="570" rx="4" fill="#334155" fill-opacity="1" stroke="#334155" stroke-width="1.6"/>
+<text x="574" y="435.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="600" fill="#ffffff" transform="rotate(-90 574 435.0)">ID / EX</text>
+<rect x="918" y="150" width="24" height="570" rx="4" fill="#334155" fill-opacity="1" stroke="#334155" stroke-width="1.6"/>
+<text x="930" y="435.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="600" fill="#ffffff" transform="rotate(-90 930 435.0)">EX / MEM</text>
+<rect x="1280" y="150" width="24" height="570" rx="4" fill="#334155" fill-opacity="1" stroke="#334155" stroke-width="1.6"/>
+<text x="1292" y="435.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="600" fill="#ffffff" transform="rotate(-90 1292 435.0)">MEM / WB</text>
+<rect x="36" y="150" width="212" height="300" rx="10" fill="#e0f2fe" fill-opacity="1" stroke="#0284c7" stroke-width="1.6"/>
+<text x="142" y="172" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="700" fill="#0f172a">fetch_unit</text>
+<rect x="50" y="186" width="184" height="46" rx="8" fill="#ffffff" fill-opacity="1" stroke="#0284c7" stroke-width="1.6"/>
+<text x="142.0" y="206" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12.5" text-anchor="middle" font-weight="600" fill="#0f172a">fetch_pc</text>
+<text x="142.0" y="221.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#475569">+4 on each issue</text>
+<rect x="50" y="242" width="184" height="46" rx="8" fill="#ffffff" fill-opacity="1" stroke="#0284c7" stroke-width="1.6"/>
+<text x="142.0" y="262" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12.5" text-anchor="middle" font-weight="600" fill="#0f172a">in-flight PC queue</text>
+<text x="142.0" y="277.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#475569">4 entries, oldest first</text>
+<rect x="50" y="298" width="184" height="58" rx="8" fill="#ffffff" fill-opacity="1" stroke="#0284c7" stroke-width="1.6"/>
+<text x="142.0" y="318" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12.5" text-anchor="middle" font-weight="600" fill="#0f172a">instruction buffer</text>
+<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#475569"><tspan x="142.0" y="332.3">4 × {pc, insn}</tspan><tspan x="142.0" y="345.7">head feeds decode</tspan></text>
+<rect x="50" y="366" width="184" height="70" rx="8" fill="#ffffff" fill-opacity="1" stroke="#0284c7" stroke-width="1.6"/>
+<text x="142.0" y="386" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12.5" text-anchor="middle" font-weight="600" fill="#0f172a">discard_q</text>
+<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#475569"><tspan x="142.0" y="406.3">responses still owed to</tspan><tspan x="142.0" y="419.7">an abandoned path</tspan></text>
+<rect x="50" y="520" width="184" height="86" rx="8" fill="#ccfbf1" fill-opacity="1" stroke="#0d9488" stroke-width="1.6"/>
+<text x="142.0" y="540" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="600" fill="#0f172a">L1 I-cache</text>
+<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#475569"><tspan x="142.0" y="568.3">1-cycle hit · may withhold</tspan><tspan x="142.0" y="581.7">gnt during a refill</tspan></text>
+<polyline points="100,450 100,518" fill="none" stroke="#0284c7" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah6)"/>
+<polyline points="184,518 184,450" fill="none" stroke="#0284c7" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah6)"/>
+<rect x="71.2" y="472.40000000000003" width="57.6" height="16.8" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="100" y="484" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="10" text-anchor="middle" font-weight="normal" fill="#475569">req·addr</text>
+<rect x="130.4" y="472.40000000000003" width="107.2" height="16.8" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="184" y="484" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="10" text-anchor="middle" font-weight="normal" fill="#475569">gnt·rvalid·rdata</text>
+<polyline points="248,327 280,327 280,356 298,356" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<rect x="265.6" y="302.40000000000003" width="32.8" height="16.8" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="282" y="314" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="10" text-anchor="middle" font-weight="normal" fill="#475569">insn</text>
+<rect x="300" y="158" width="170" height="120" rx="8" fill="#ede9fe" fill-opacity="1" stroke="#7c3aed" stroke-width="1.6"/>
+<text x="385.0" y="178" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="600" fill="#0f172a">register file</text>
+<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#475569"><tspan x="385.0" y="216.6">32 × 32-bit · 2R / 1W</tspan><tspan x="385.0" y="230.0">async read, sync write</tspan><tspan x="385.0" y="243.4">x0 reads as 0</tspan></text>
+<rect x="300" y="320" width="170" height="72" rx="8" fill="#ede9fe" fill-opacity="1" stroke="#7c3aed" stroke-width="1.6"/>
+<text x="385.0" y="340" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="600" fill="#0f172a">decoder</text>
+<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#475569"><tspan x="385.0" y="361.3">insn → decoded_t</tspan><tspan x="385.0" y="374.7">imm · alu_op · flags</tspan></text>
+<polyline points="385,320 385,280" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<rect x="384.66" y="288.88" width="78.67999999999999" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="424" y="300" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">rs1/rs2 addr</text>
+<polygon points="506,178 532,196.4 532,251.6 506,270" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
+<text x="519.0" y="227.5" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="middle" font-weight="600" fill="#0f172a" transform="rotate(-90 519.0 227.5)">BYPASS</text>
+<polyline points="470,200 504,200" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<polyline points="470,248 504,248" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<polyline points="532,224 560,224" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<polyline points="470,356 560,356" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<rect x="483.1" y="330.40000000000003" width="63.8" height="16.8" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="515" y="342" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="10" text-anchor="middle" font-weight="normal" fill="#475569">decoded_t</text>
+<rect x="300" y="430" width="236" height="92" rx="8" fill="#fee2e2" fill-opacity="1" stroke="#dc2626" stroke-width="1.6"/>
+<text x="418.0" y="450" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="600" fill="#0f172a">hazard detection</text>
+<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#475569"><tspan x="418.0" y="474.6">producer in EX is a load or CSR read,</tspan><tspan x="418.0" y="488.0">consumer in ID needs its rd</tspan><tspan x="418.0" y="501.4">→ stall_ld_use: one bubble</tspan></text>
+<polyline points="536,476 560,476" fill="none" stroke="#dc2626" stroke-width="1.7" stroke-linejoin="round" stroke-dasharray="5 4" marker-end="url(#ah3)"/>
+<polygon points="612,180 640,194.4 640,237.6 612,252" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+<text x="626.0" y="219.5" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="600" fill="#0f172a" transform="rotate(-90 626.0 219.5)">FWD</text>
+<polygon points="612,276 640,290.4 640,333.6 612,348" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+<text x="626.0" y="315.5" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="600" fill="#0f172a" transform="rotate(-90 626.0 315.5)">FWD</text>
+<polyline points="586,200 610,200" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<polyline points="586,296 610,296" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<polygon points="672,186 696,198.0 696,234.0 672,246" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+<text x="684.0" y="219.5" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" text-anchor="middle" font-weight="600" fill="#0f172a" transform="rotate(-90 684.0 219.5)">A</text>
+<polygon points="672,282 696,294.0 696,330.0 672,342" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+<text x="684.0" y="315.5" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" text-anchor="middle" font-weight="600" fill="#0f172a" transform="rotate(-90 684.0 315.5)">B</text>
+<rect x="656.44" y="162.88" width="55.12" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="684" y="174" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">pc | rs1</text>
+<rect x="653.495" y="342.88" width="61.01" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="684" y="354" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">imm | rs2</text>
+<polygon points="720,180 800,210 800,310 720,340 720,282 736,260 720,238" fill="#fef3c7" stroke="#d97706" stroke-width="1.7"/>
+<text x="764" y="266" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="700" fill="#0f172a">ALU</text>
+<polyline points="640,216 670,216" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<polyline points="640,312 670,312" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<polyline points="696,216 718,216" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<polyline points="696,312 718,312" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<polyline points="800,272 916,272" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<rect x="843.4" y="248.4" width="45.2" height="16.8" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="866" y="260" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="10" text-anchor="middle" font-weight="normal" fill="#475569">result</text>
+<rect x="700" y="368" width="150" height="40" rx="8" fill="#fef3c7" fill-opacity="1" stroke="#d97706" stroke-width="1.6"/>
+<text x="775.0" y="392.2" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="600" fill="#0f172a">link = pc + 4</text>
+<polyline points="850,388 884,388 884,272" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="660,216 660,566 698,566" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<polyline points="660,478 698,478" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<polyline points="652,312 652,596 698,596" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<polyline points="652,432 916,432" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<circle cx="660" cy="216" r="3.2" fill="#0f172a"/>
+<circle cx="652" cy="312" r="3.2" fill="#0f172a"/>
+<circle cx="660" cy="478" r="3.2" fill="#0f172a"/>
+<circle cx="652" cy="432" r="3.2" fill="#0f172a"/>
+<rect x="746.4" y="410.40000000000003" width="107.2" height="16.8" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="800" y="422" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="10" text-anchor="middle" font-weight="normal" fill="#475569">store data (rs2)</text>
+<rect x="700" y="456" width="180" height="44" rx="8" fill="#fef3c7" fill-opacity="1" stroke="#d97706" stroke-width="1.6"/>
+<text x="790.0" y="476" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12.5" text-anchor="middle" font-weight="600" fill="#0f172a">address adder</text>
+<text x="790.0" y="490.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#475569">rs1 + imm</text>
+<polyline points="880,478 916,478" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<rect x="700" y="548" width="190" height="66" rx="8" fill="#fef3c7" fill-opacity="1" stroke="#d97706" stroke-width="1.6"/>
+<text x="795.0" y="568" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="600" fill="#0f172a">branch unit</text>
+<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#475569"><tspan x="795.0" y="586.3">6 conditions · target</tspan><tspan x="795.0" y="599.7">pc+imm or rs1+imm</tspan></text>
+<polyline points="890,576 916,576" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<rect x="877.385" y="544.88" width="49.23" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="902" y="556" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">pc_next</text>
+<polyline points="790,500 790,514 958,514" fill="none" stroke="#0d9488" stroke-width="2" stroke-linejoin="round" stroke-dasharray="5 4" marker-end="url(#ah4)"/>
+<rect x="770.265" y="516.88" width="143.47" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="842" y="528" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#0d9488">pre_addr (skips EX/MEM)</text>
+<rect x="960" y="158" width="172" height="90" rx="8" fill="#f3e8ff" fill-opacity="1" stroke="#9333ea" stroke-width="1.6"/>
+<text x="1046.0" y="178" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="600" fill="#0f172a">CSR file</text>
+<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#475569"><tspan x="1046.0" y="201.6">machine-mode CSRs + counters</tspan><tspan x="1046.0" y="215.0">read / written here,</tspan><tspan x="1046.0" y="228.4">in program order</tspan></text>
+<polygon points="1186,196 1216,224.0 1216,308.0 1186,336" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="1201.0" y="269.5" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="600" fill="#0f172a" transform="rotate(-90 1201.0 269.5)">WB SELECT</text>
+<polyline points="942,272 1184,272" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<rect x="1003.3" y="260.40000000000003" width="113.4" height="16.8" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="1060" y="272" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="10" text-anchor="middle" font-weight="normal" fill="#475569">alu / link result</text>
+<polyline points="1132,214 1184,214" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<rect x="1145.165" y="192.88" width="25.669999999999998" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="1158" y="204" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">csr</text>
+<rect x="960" y="420" width="172" height="100" rx="8" fill="#ccfbf1" fill-opacity="1" stroke="#0d9488" stroke-width="1.6"/>
+<text x="1046.0" y="440" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="600" fill="#0f172a">L1 D-cache port</text>
+<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#475569"><tspan x="1046.0" y="468.6">addr · we · be · wdata →</tspan><tspan x="1046.0" y="482.0">← ready · rdata</tspan><tspan x="1046.0" y="495.4">stall_mem until ready</tspan></text>
+<polyline points="942,440 958,440" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<polyline points="942,478 958,478" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<rect x="1152" y="420" width="112" height="100" rx="8" fill="#dcfce7" fill-opacity="1" stroke="#16a34a" stroke-width="1.6"/>
+<text x="1208.0" y="440" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="600" fill="#0f172a">load extract</text>
+<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#475569"><tspan x="1208.0" y="475.3">byte / half</tspan><tspan x="1208.0" y="488.7">sign / zero</tspan></text>
+<polyline points="1132,470 1150,470" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<polyline points="1201,420 1201,338" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<rect x="1214.22" y="368.88" width="31.56" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="1230" y="380" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">load</text>
+<polyline points="1216,266 1278,266" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<rect x="960" y="560" width="172" height="100" rx="8" fill="#f3e8ff" fill-opacity="1" stroke="#9333ea" stroke-width="1.6"/>
+<text x="1046.0" y="580" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12.5" text-anchor="middle" font-weight="600" fill="#0f172a">trap · mret · FENCE.I</text>
+<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#475569"><tspan x="1046.0" y="608.6">classify exceptions (precise)</tspan><tspan x="1046.0" y="622.0">redirect: mtvec / mepc / pc+4</tspan><tspan x="1046.0" y="635.4">flush_req ⇄ flush_done</tspan></text>
+<polyline points="942,610 958,610" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<rect x="1336" y="420" width="214" height="120" rx="8" fill="#ffe4e6" fill-opacity="1" stroke="#e11d48" stroke-width="1.6"/>
+<text x="1443.0" y="440" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" text-anchor="middle" font-weight="600" fill="#0f172a">RVFI retirement port</text>
+<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#475569"><tspan x="1443.0" y="471.8">valid · order · insn · trap</tspan><tspan x="1443.0" y="485.3">rd_addr · rd_wdata</tspan><tspan x="1443.0" y="498.7">pc_rdata · pc_wdata</tspan><tspan x="1443.0" y="512.2">→ compared with Spike</tspan></text>
+<polyline points="1304,480 1334,480" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<polyline points="930,720 930,760 598,760 598,222 610,222" fill="none" stroke="#ea580c" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah2)"/>
+<polyline points="598,318 610,318" fill="none" stroke="#ea580c" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah2)"/>
+<polyline points="1292,720 1292,784 592,784 592,238 610,238" fill="none" stroke="#ea580c" stroke-width="2" stroke-linejoin="round" stroke-dasharray="7 4" marker-end="url(#ah2)"/>
+<polyline points="592,334 610,334" fill="none" stroke="#ea580c" stroke-width="2" stroke-linejoin="round" stroke-dasharray="7 4" marker-end="url(#ah2)"/>
+<rect x="638.82" y="747.92" width="242.35999999999999" height="17.439999999999998" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="760" y="760" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#ea580c">EX/MEM → EX   (ALU and link results)</text>
+<rect x="913.955" y="771.92" width="392.09" height="17.439999999999998" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="1110" y="784" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#ea580c">MEM/WB → EX   (every result, including loads and CSR reads)</text>
+<polyline points="795,614 795,840" fill="none" stroke="#dc2626" stroke-width="2" stroke-linejoin="round"/>
+<polyline points="1046,660 1046,840 256,840 256,432 250,432" fill="none" stroke="#dc2626" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah3)"/>
+<rect x="320.7" y="827.92" width="398.6" height="17.439999999999998" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="520" y="840" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#dc2626">redirect_pc   priority: trap › mret › FENCE.I › taken branch</text>
+<polyline points="30,884 64,884" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah0)"/>
+<text x="72" y="888" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11.5" text-anchor="start" font-weight="normal" fill="#475569">data</text>
+<polyline points="195,884 229,884" fill="none" stroke="#ea580c" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah2)"/>
+<text x="237" y="888" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11.5" text-anchor="start" font-weight="normal" fill="#475569">forwarding</text>
+<polyline points="360,884 394,884" fill="none" stroke="#e11d48" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah8)"/>
+<text x="402" y="888" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11.5" text-anchor="start" font-weight="normal" fill="#475569">writeback</text>
+<polyline points="525,884 559,884" fill="none" stroke="#dc2626" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#ah3)"/>
+<text x="567" y="888" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11.5" text-anchor="start" font-weight="normal" fill="#475569">redirect</text>
+<polyline points="690,884 724,884" fill="none" stroke="#dc2626" stroke-width="1.7" stroke-linejoin="round" stroke-dasharray="5 4" marker-end="url(#ah3)"/>
+<text x="732" y="888" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11.5" text-anchor="start" font-weight="normal" fill="#475569">stall</text>
+<polyline points="855,884 889,884" fill="none" stroke="#0d9488" stroke-width="1.7" stroke-linejoin="round" stroke-dasharray="5 4" marker-end="url(#ah4)"/>
+<text x="897" y="888" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11.5" text-anchor="start" font-weight="normal" fill="#475569">early D$ address</text>
+<text x="30" y="920" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11.5" text-anchor="start" font-weight="normal" fill="#475569">stall_mem (D$ not ready, or FENCE.I waiting): fetch stops popping, ID/EX holds and re-latches its forwarded operands, EX/MEM holds, MEM/WB receives a bubble.</text>
+<text x="30" y="942" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11.5" text-anchor="start" font-weight="normal" fill="#475569">flush (trap, mret, FENCE.I done, taken branch): younger instructions become bubbles; the fetch unit drops its buffer and discards responses still owed.</text>
+</svg>
