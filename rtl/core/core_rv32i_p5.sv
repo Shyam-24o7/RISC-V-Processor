@@ -463,6 +463,16 @@ module core_rv32i_p5
 
   logic wb_valid;   // WB stage retires an instruction this cycle
 
+  // minstret counts an instruction as it leaves MEM - the stage where CSRs are
+  // read and written - rather than at WB. Counting at WB lags a counter read by
+  // the instruction sitting in WB, and lets a counter write suppress that OLDER
+  // instruction's increment while the writer's own increment lands a cycle
+  // later. The two errors cancel only when another counter write follows
+  // back to back; a bubble after the write (an instruction-cache miss) exposes
+  // them. Exactly the instructions counted here reach WB on the next edge.
+  logic mem_leaves;
+  assign mem_leaves = ex_mem_q.valid && !stall_mem;
+
   csr_file u_csr_file (
     .clk_i(clk_i), .rst_ni(rst_ni),
     .addr_i(ex_mem_q.dec.imm[11:0]), .wdata_i(csr_wdata), .we_i(csr_we),
@@ -470,7 +480,7 @@ module core_rv32i_p5
     .trap_i(trap_taken), .trap_cause_i(trap_cause),
     .trap_pc_i(ex_mem_q.pc),
     .trap_val_i(trap_tval), .mret_i(mret_taken),
-    .tvec_o(mtvec), .epc_o(mepc), .insn_retired_i(wb_valid), .stall_i(stall_mem)
+    .tvec_o(mtvec), .epc_o(mepc), .insn_retired_i(mem_leaves), .stall_i(stall_mem)
   );
 
   // ---- Load data extraction ----
