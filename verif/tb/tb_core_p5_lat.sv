@@ -84,8 +84,9 @@ module tb_core_p5_lat #(
   // The tohost store commits at MEM, but on a pipelined core the storing
   // instruction does not RETIRE until WB. Completion is the store's handshake,
   // not its request: with wait states the request is visible for LATENCY cycles
-  // before the store completes. The drain then lets it retire through WB. Harmless on a single-cycle core, where store
-  // and retirement are the same cycle.
+  // before the store completes. The drain then lets it retire through WB.
+  // Harmless on a single-cycle core, where store and retirement are the same
+  // cycle.
   localparam int DRAIN_CYCLES = 8;
   int          drain = -1;
   logic [31:0] tohost_val;

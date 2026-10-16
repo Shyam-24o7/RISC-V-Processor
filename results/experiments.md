@@ -36,6 +36,10 @@ Both parts are required: a buffer cannot fill from a memory serving one
 request at a time. At zero latency the registered response adds one cycle
 before decode (+62 cycles).
 
+Note: these cycle counts were measured with the earlier `tb_core_p5_lat`
+completion trigger; the corrected testbench gives 507/592/809 at 1, 2 and 4
+wait states (see section 6).
+
 ## 3. Branch prediction in ID (reverted)
 
 | Variant | Cycles | IPC | Fmax (MHz)* |
@@ -80,8 +84,9 @@ Spike.
 
 `cachestress.c` is built to defeat the data cache: three arrays that map onto
 the same sets, then a working set twice the cache size. Its 36.5% D$ hit rate
-is a property of that access pattern, not of the cache, and the speedup comes
-almost entirely from the instruction cache. Cycles of the cached system across
+is a property of that access pattern: three arrays contend for two ways, and
+the 8 KiB stream touches one word per line. The I$ hit rate is 99.9%. The
+split of the speedup between the two caches was not measured. Cycles of the cached system across
 main-memory latency (wait states):
 
 | Wait states | hello.c uncached | hello.c cached | cachestress.c uncached | cachestress.c cached |
@@ -91,12 +96,12 @@ main-memory latency (wait states):
 | 10 | 1439 | 880 | 167919 | 126479 |
 | 20 | - | 1220 | - | 192279 |
 
-At 1 wait state the cached system is slower on both programs. A miss refills
-a whole 16-byte line, and at low latency that cost is not repaid on these
-programs; the crossover was not located more finely than between 1 and 4 wait
-states for hello.c. The caches pay off as main-memory latency grows. Cached hit and miss
-counts do not depend on latency (cachestress.c: 42199-42201 I$ hits, 4493 D$
-misses).
+At 1 wait state the cached system is slower on both programs, and faster at 4
+or more wait states for hello.c and at 10 or more for cachestress.c (4 was not
+run for the uncached cachestress). The cause was not measured; a likely
+explanation is the cost of refilling a whole 16-byte line on each miss. Cached
+hit and miss counts vary by at most 2 across latencies (cachestress.c: 42199 to
+42201 I$ hits, 4493 D$ misses at every latency).
 
 Measurement note: `tb_core_p5_lat` previously took the `tohost` store as
 complete when the request appeared. With wait states the request is visible for

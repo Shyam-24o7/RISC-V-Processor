@@ -388,7 +388,7 @@ With 10 main-memory wait states, cycles to completion (all runs match Spike):
 
 `cachestress.c` is written to thrash the data cache, so its low D$ hit rate reflects the
 access pattern. At 1 wait state the cached system is slower on both programs (hello.c 575
-vs 507 cycles); see `results/experiments.md`, section 6.
+vs 507 cycles; cachestress.c 67270 vs 51423); see `results/experiments.md`, section 6.
 
 Both IPC figures above are for **ideal memory**, the one case where the pipeline's prefetch
 buffer is pure overhead. Under any real memory latency the ranking flips (section 5.1),
