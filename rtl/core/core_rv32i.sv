@@ -31,7 +31,7 @@ module core_rv32i
   input  logic [31:0] data_rdata_i,
   input  logic        data_ready_i,
 
-  // RVFI retirement port (NRET=1) - what the Spike comparison consumes
+  // RVFI retirement port (one retirement per cycle) - what the Spike comparison consumes
   output logic        rvfi_valid_o,
   output logic [63:0] rvfi_order_o,
   output logic [31:0] rvfi_insn_o,

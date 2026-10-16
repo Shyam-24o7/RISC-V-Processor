@@ -73,7 +73,7 @@ proc util_row {file name} {
   set data [read $fh]
   close $fh
   foreach line [split $data "\n"] {
-    if {[regexp "^\\|\\s+${name}\\*?\\s+\\|\\s+(\\d+)\\s+\\|" $line -> n]} {
+    if {[regexp "^\\|\\s+${name}\\*?\\s+\\|\\s+(\\d+(?:\\.\\d+)?)\\s+\\|" $line -> n]} {
       return $n
     }
   }
@@ -84,6 +84,14 @@ set n_lut  [util_row $urpt "CLB LUTs"]
 set n_ff   [util_row $urpt "CLB Registers"]
 set n_dsp  [util_row $urpt "DSPs"]
 set n_bram [util_row $urpt "Block RAM Tile"]
+
+# Spec success criterion: the cached system must infer block RAM. Zero means
+# the cache arrays were built from LUTs and the utilisation figures would
+# describe the wrong design.
+if {$core eq "rv32_soc" && $n_bram == 0} {
+  puts "SYNTH FAILED $core: no block RAM inferred (cache arrays built from LUTs?)"
+  exit 1
+}
 
 set fh [open $outdir/summary.json w]
 puts $fh "{"

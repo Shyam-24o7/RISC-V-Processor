@@ -15,9 +15,9 @@ analysis, so these Fmax numbers are not reliable. Cycle counts are unaffected.
 | Wait states | Single-cycle | Pipeline |
 |---|---|---|
 | 0 | 297 | 422 |
-| 1 | 594 | 765 |
-| 2 | 891 | 1147 |
-| 4 | 1485 | 1911 |
+| 1 | 595 | 765 |
+| 2 | 893 | 1147 |
+| 4 | 1489 | 1911 |
 
 The pipeline stays about 29% slower at every non-zero latency. An
 instruction-fetch stall froze the whole pipeline, so fetch latency was paid
@@ -28,9 +28,9 @@ once per instruction, as on the single-cycle core.
 | Wait states | Single-cycle | Pipeline + fetch unit | Ratio |
 |---|---|---|---|
 | 0 | 297 | 484 | 0.61x |
-| 1 | 594 | 506 | 1.17x |
-| 2 | 891 | 590 | 1.51x |
-| 4 | 1485 | 805 | 1.84x |
+| 1 | 595 | 506 | 1.18x |
+| 2 | 893 | 590 | 1.51x |
+| 4 | 1489 | 805 | 1.85x |
 
 Both parts are required: a buffer cannot fill from a memory serving one
 request at a time. At zero latency the registered response adds one cycle
@@ -39,6 +39,11 @@ before decode (+62 cycles).
 Note: these cycle counts were measured with the earlier `tb_core_p5_lat`
 completion trigger; the corrected testbench gives 507/592/809 at 1, 2 and 4
 wait states (see section 6).
+
+Note: the single-cycle column was re-measured with `tb_core_rv32i_lat` waiting
+for the `tohost` store's handshake rather than its request: 595/893/1489 at 1, 2
+and 4 wait states (previously 594/891/1485; 297 at 0 and 3277 at 10 wait
+states). The pipeline columns are unchanged from the earlier measurement.
 
 ## 3. Branch prediction in ID (reverted)
 

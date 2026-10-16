@@ -171,18 +171,20 @@ regress: lint
 VIVADO := /mnt/d/Vivado/2022.2/bin/vivado.bat
 
 .PHONY: synth results
-# Usage: make synth CORE=core_rv32i_p5
+TARGET ?= 4.0
+# Usage: make synth CORE=rv32_soc TARGET=3.5
 synth:
 	@mkdir -p results/raw
-	$(VIVADO) -mode batch -source scripts/synth.tcl -tclargs $(CORE) -nojournal -nolog
+	$(VIVADO) -mode batch -source scripts/synth.tcl -tclargs $(CORE) $(TARGET) -nojournal -nolog
 	@cp build_vivado/$(CORE)/summary.json results/raw/$(CORE)_synth.json
 	@echo "recorded results/raw/$(CORE)_synth.json"
 
 results:
 	@python3 scripts/collect_results.py
 
-# Memory-latency sweep. LAT is the number of wait states (an access takes LAT+1 cycles), applied to BOTH
-# the instruction and data ports, and set at elaboration with -G.
+# Memory-latency sweep. LAT is the number of wait states (an access takes LAT+1 cycles), applied to each memory
+# port of the bare cores, or to the single line port to main memory in tb_soc, and set at
+# elaboration with -G.
 #   make cosim-lat PROG=hello CORE_TB=tb_core_p5_lat LAT=2
 LAT ?= 1
 

@@ -113,16 +113,22 @@ what gets written back. The next-PC decision feeds back to the top.
 
 | Module | Lines | Responsibility |
 |---|---|---|
-| `rtl/common/rv32_pkg.sv` | 134 | Every ISA encoding: opcodes, funct3/funct7, CSR addresses, exception causes. The single source of truth. |
+| `rtl/common/rv32_pkg.sv` | 128 | Every ISA encoding: opcodes, funct3/funct7, CSR addresses, exception causes. The single source of truth. |
 | `rtl/common/alu.sv` | 39 | 11 combinational operations |
 | `rtl/common/regfile.sv` | 38 | 32×32 registers, two read ports, one write port |
-| `rtl/common/decoder.sv` | 135 | Instruction word → control bundle + sign-extended immediate |
-| `rtl/common/csr_file.sv` | 169 | Machine-mode CSRs, trap entry/exit, performance counters |
+| `rtl/common/decoder.sv` | 137 | Instruction word → control bundle + sign-extended immediate |
+| `rtl/common/csr_file.sv` | 176 | Machine-mode CSRs, trap entry/exit, performance counters |
 | `rtl/mem/magic_mem.sv` | 59 | Zero-latency memory model (simulation only) |
-| `rtl/mem/latency_mem.sv` | — | Memory with configurable wait states and a ready handshake; optional pipelined instruction port |
-| `rtl/core/fetch_unit.sv` | — | Decoupled fetch: runs the fetch address ahead, buffers arriving instructions |
-| `rtl/core/core_rv32i_p5.sv` | — | Five-stage pipelined core |
-| `rtl/core/core_rv32i.sv` | 265 | Top-level datapath tying it all together |
+| `rtl/mem/latency_mem.sv` | 148 | Memory with configurable wait states and a ready handshake; optional pipelined instruction port |
+| `rtl/mem/sram_1r1w.sv` | 37 | Simple dual-port RAM with one synchronous read port and lane-enabled writes, coded to map to block RAM |
+| `rtl/mem/icache.sv` | 154 | L1 instruction cache: 2-way, 16-byte lines, read only, hits stream at one per cycle |
+| `rtl/mem/dcache.sv` | 247 | L1 data cache: 2-way, 16-byte lines, write-back and write-allocate, hits complete in MEM without a stall |
+| `rtl/mem/mem_arbiter.sv` | 72 | Shares one line port between the two caches; the data cache wins a tie and a granted side keeps the port until done |
+| `rtl/mem/main_mem.sv` | 68 | Line-wide main memory with configurable wait states (simulation only) |
+| `rtl/soc/rv32_soc.sv` | 100 | Cached core complex: pipeline, both L1 caches and the arbiter; sequences `FENCE.I` across them |
+| `rtl/core/fetch_unit.sv` | 168 | Decoupled fetch: runs the fetch address ahead, buffers arriving instructions |
+| `rtl/core/core_rv32i_p5.sv` | 576 | Five-stage pipelined core |
+| `rtl/core/core_rv32i.sv` | 283 | Top-level datapath tying it all together |
 
 ### 2.2 Details that are easy to get wrong
 
@@ -148,15 +154,15 @@ are reassembled from scattered bits, with an implicit zero LSB since branch targ
 **Byte and halfword loads sign-extend from their own lane.** `LB` from address 3 takes
 bits [31:24] and extends from bit 7 *of that byte*, not bit 31 of the word.
 
-**`csr_we` must be pure write *intent*.** Gating it with `trap_taken` closes a
-combinational loop:
+**`csr_we` must be pure write *intent*.** Folding a stall term into it
+closed a combinational loop:
 
 ```
-trap_taken -> csr_we -> csr_illegal -> illegal_insn -> trap_taken
+csr_we -> csr_illegal -> trap_taken -> stall -> csr_we
 ```
 
-The suppression happens inside `csr_file` instead, whose sequential block gives trap entry
-priority over the write branch.
+`csr_we` is therefore pure write intent. `csr_file`'s `stall_i` gates the actual register
+updates (write, trap entry, `MRET`) and never `illegal_o`.
 
 ---
 
