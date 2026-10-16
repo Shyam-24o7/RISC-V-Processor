@@ -77,7 +77,7 @@ VFLAGS := --binary --timing --assert -Wno-fatal $(VINC)
 
 # Every synthesisable top, linted with all warnings fatal. A task that adds a
 # top-level module adds it here.
-LINT_TOPS := core_rv32i core_rv32i_p5 main_mem mem_arbiter icache dcache
+LINT_TOPS := core_rv32i core_rv32i_p5 main_mem mem_arbiter icache dcache rv32_soc
 
 # A top that does not import rv32_pkg is linted from its own sources only:
 # otherwise every package constant is reported unused for that top.
