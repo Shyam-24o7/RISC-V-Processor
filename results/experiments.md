@@ -96,9 +96,9 @@ main-memory latency (wait states):
 | 10 | 1439 | 880 | 167919 | 126479 |
 | 20 | - | 1220 | - | 192279 |
 
-At 1 wait state the cached system is slower on both programs, and faster at 4
-or more wait states for hello.c and at 10 or more for cachestress.c (4 was not
-run for the uncached cachestress). The cause was not measured; a likely
+At 1 wait state the cached system is slower on both programs; it is faster at
+the measured points 4 and 10 for hello.c and at 10 for cachestress.c. Where the
+crossover lies was not measured. The cause was not measured; a likely
 explanation is the cost of refilling a whole 16-byte line on each miss. Cached
 hit and miss counts vary by at most 2 across latencies (cachestress.c: 42199 to
 42201 I$ hits, 4493 D$ misses at every latency).
