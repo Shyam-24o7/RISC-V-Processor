@@ -35,7 +35,9 @@ module rv32_soc #(
   output logic         ic_hit_o,
   output logic         ic_miss_o,
   output logic         dc_hit_o,
-  output logic         dc_miss_o
+  output logic         dc_miss_o,
+  output logic         bp_branch_o,      // resolved branch or jump
+  output logic         bp_mispredict_o   // branch prediction was wrong
 );
 
   // core <-> instruction cache
@@ -62,6 +64,7 @@ module rv32_soc #(
     .data_req_o(d_req), .data_addr_o(d_addr), .data_we_o(d_we), .data_be_o(d_be),
     .data_wdata_o(d_wdata), .data_rdata_i(d_rdata), .data_ready_i(d_ready),
     .data_pre_addr_o(d_pre_addr), .flush_req_o(fl_req), .flush_done_i(ic_inv_done),
+    .stat_branch_o(bp_branch_o), .stat_mispredict_o(bp_mispredict_o),
     .rvfi_valid_o(rvfi_valid_o), .rvfi_order_o(rvfi_order_o), .rvfi_insn_o(rvfi_insn_o),
     .rvfi_trap_o(rvfi_trap_o), .rvfi_rd_addr_o(rvfi_rd_addr_o),
     .rvfi_rd_wdata_o(rvfi_rd_wdata_o), .rvfi_pc_rdata_o(rvfi_pc_rdata_o),

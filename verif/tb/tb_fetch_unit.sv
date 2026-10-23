@@ -16,7 +16,16 @@ module tb_fetch_unit;
   logic        gnt;
   logic [31:0] iaddr, irdata;
   logic        ivalid, iaccept;
-  logic [31:0] ipc, iinsn;
+  logic [31:0] ipc, iinsn, ipn;
+
+  // Predictor model: when enabled, the instruction at PRED_PC is predicted
+  // taken to PRED_TGT; everything else is predicted to fall through.
+  localparam logic [31:0] PRED_PC  = 32'h0000_5008;
+  localparam logic [31:0] PRED_TGT = 32'h0000_6000;
+  logic        pred_en = 0;
+  logic [31:0] ppc;
+  logic        ptaken;
+  assign ptaken = pred_en && (ppc == PRED_PC);
 
   fetch_unit #(.DEPTH(DEPTH)) dut (
     .clk_i(clk), .rst_ni(rst_n),
@@ -24,8 +33,9 @@ module tb_fetch_unit;
     .instr_req_o(ireq), .instr_addr_o(iaddr),
     .instr_gnt_i(gnt),
     .instr_rdata_i(irdata), .instr_ready_i(iready),
+    .pred_pc_o(ppc), .pred_taken_i(ptaken), .pred_target_i(PRED_TGT),
     .insn_valid_o(ivalid), .insn_pc_o(ipc), .insn_o(iinsn),
-    .insn_ready_i(iaccept)
+    .insn_pred_next_o(ipn), .insn_ready_i(iaccept)
   );
 
   // Pipelined memory model: accepts a request every cycle, returns the data
@@ -75,6 +85,11 @@ module tb_fetch_unit;
     // The memory returns the address as data, so this catches a response
     // paired with the wrong in-flight PC.
     chk("insn payload matches its own pc", iinsn, exp_pc);
+    // With nothing predicted taken, fetch always went to pc + 4 next.
+    if (!pred_en || exp_pc != PRED_PC)
+      chk("predicted next pc is pc+4", ipn, exp_pc + 32'd4);
+    else
+      chk("predicted next pc is the predicted target", ipn, PRED_TGT);
     @(negedge clk); iaccept = 1;
     @(negedge clk); iaccept = 0;
   endtask
@@ -122,6 +137,18 @@ module tb_fetch_unit;
     @(negedge clk); redirect = 0;
     take(32'h0000_4000);
     take(32'h0000_4004);
+
+    // ---- a predicted-taken branch: fetch goes straight to its target ----
+    // No redirect is involved: the instruction after 0x5008 must be 0x6000,
+    // and it must carry 0x6000 as its predicted next PC so EX can check it.
+    @(negedge clk); pred_en = 1; redirect = 1; redirect_pc = 32'h0000_5000;
+    @(negedge clk); redirect = 0;
+    take(32'h0000_5000);
+    take(32'h0000_5004);
+    take(32'h0000_5008);
+    take(32'h0000_6000);
+    take(32'h0000_6004);
+    @(negedge clk); pred_en = 0;
 
     // ---- back-to-back redirects with responses still owed ----
     // The first redirect leaves responses to discard; the second arrives before

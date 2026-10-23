@@ -33,6 +33,7 @@ module tb_core_p5;
     .data_req_o(), .data_addr_o(daddr), .data_we_o(dwe), .data_be_o(dbe),
     .data_wdata_o(dwdata), .data_rdata_i(drdata), .data_ready_i(1'b1),
     .data_pre_addr_o(), .flush_req_o(), .flush_done_i(1'b1),
+    .stat_branch_o(), .stat_mispredict_o(),
     .rvfi_valid_o(rvfi_valid), .rvfi_order_o(rvfi_order), .rvfi_insn_o(rvfi_insn),
     .rvfi_trap_o(rvfi_trap), .rvfi_rd_addr_o(rvfi_rd_addr),
     .rvfi_rd_wdata_o(rvfi_rd_wdata), .rvfi_pc_rdata_o(rvfi_pc_rdata),

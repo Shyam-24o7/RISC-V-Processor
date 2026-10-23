@@ -14,6 +14,11 @@
 //
 // The core never needs to know the memory latency. Requests are tracked by a
 // queue of in-flight PCs; a response is matched to the oldest one.
+//
+// Branch prediction happens here, before the instruction is even fetched: the
+// predictor is looked up at the PC being requested, and if it predicts taken
+// the next request goes to the predicted target instead of pc+4. Each
+// instruction carries its predicted next PC to EX, where it is checked.
 module fetch_unit #(
   parameter int          DEPTH     = 4,   // in-flight plus buffered instructions
   parameter logic [31:0] BOOT_ADDR = 32'h0000_0000
@@ -32,10 +37,16 @@ module fetch_unit #(
   input  logic [31:0] instr_rdata_i,
   input  logic        instr_ready_i,   // a response is valid this cycle
 
+  // Branch predictor, looked up at the PC being requested
+  output logic [31:0] pred_pc_o,
+  input  logic        pred_taken_i,
+  input  logic [31:0] pred_target_i,
+
   // Decode side
   output logic        insn_valid_o,
   output logic [31:0] insn_pc_o,
   output logic [31:0] insn_o,
+  output logic [31:0] insn_pred_next_o, // where fetch went after this instruction
   input  logic        insn_ready_i     // decode consumes the head this cycle
 );
 
@@ -44,13 +55,15 @@ module fetch_unit #(
 
   logic [31:0] fetch_pc_q;
 
-  // In-flight request PCs, oldest at index 0.
+  // In-flight request PCs and their predicted next PCs, oldest at index 0.
   logic [31:0] pcq_q   [DEPTH];
+  logic [31:0] pcq_pn_q [DEPTH];
   logic [CW-1:0] pcq_cnt_q;
 
   // Instructions received and waiting for decode, oldest at index 0.
   logic [31:0] ibuf_pc_q [DEPTH];
   logic [31:0] ibuf_in_q [DEPTH];
+  logic [31:0] ibuf_pn_q [DEPTH];
   logic [CW-1:0] ibuf_cnt_q;
 
   // Responses still owed for requests issued before a redirect. They must be
@@ -64,6 +77,12 @@ module fetch_unit #(
   assign can_issue    = ((pcq_cnt_q + ibuf_cnt_q) < CW'(DEPTH)) && !redirect_i;
   assign instr_req_o  = can_issue;
   assign instr_addr_o = fetch_pc_q;
+
+  // Where the request after this one goes: the predicted target on a
+  // predicted-taken branch or jump, otherwise the next sequential word.
+  logic [31:0] next_pc;
+  assign pred_pc_o = fetch_pc_q;
+  assign next_pc   = pred_taken_i ? pred_target_i : (fetch_pc_q + 32'd4);
 
   // A request only counts once the memory has accepted it. Until then the
   // address is simply presented again; nothing is queued as in flight.
@@ -79,6 +98,7 @@ module fetch_unit #(
   assign insn_valid_o = (ibuf_cnt_q != 0);
   assign insn_pc_o    = ibuf_pc_q[0];
   assign insn_o       = ibuf_in_q[0];
+  assign insn_pred_next_o = ibuf_pn_q[0];
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
@@ -88,8 +108,10 @@ module fetch_unit #(
       discard_q  <= '0;
       for (int k = 0; k < DEPTH; k++) begin
         pcq_q[k]     <= '0;
+        pcq_pn_q[k]  <= '0;
         ibuf_pc_q[k] <= '0;
         ibuf_in_q[k] <= '0;
+        ibuf_pn_q[k] <= '0;
       end
     end else if (redirect_i) begin
       // Drop everything buffered, and remember how many responses are still
@@ -116,11 +138,15 @@ module fetch_unit #(
       // entry is lost. Shift first, then write the new request at its
       // post-shift index.
       if (resp_keep) begin
-        for (int k = 0; k < DEPTH-1; k++) pcq_q[k] <= pcq_q[k+1];
+        for (int k = 0; k < DEPTH-1; k++) begin
+          pcq_q[k]    <= pcq_q[k+1];
+          pcq_pn_q[k] <= pcq_pn_q[k+1];
+        end
       end
       if (issue) begin
-        pcq_q[IW'(resp_keep ? (pcq_cnt_q - CW'(1)) : pcq_cnt_q)] <= fetch_pc_q;
-        fetch_pc_q <= fetch_pc_q + 32'd4;
+        pcq_q[IW'(resp_keep ? (pcq_cnt_q - CW'(1)) : pcq_cnt_q)]    <= fetch_pc_q;
+        pcq_pn_q[IW'(resp_keep ? (pcq_cnt_q - CW'(1)) : pcq_cnt_q)] <= next_pc;
+        fetch_pc_q <= next_pc;
       end
 
       // The count moves by the difference when both happen at once.
@@ -135,17 +161,21 @@ module fetch_unit #(
         for (int k = 0; k < DEPTH-1; k++) begin
           ibuf_pc_q[k] <= ibuf_pc_q[k+1];
           ibuf_in_q[k] <= ibuf_in_q[k+1];
+          ibuf_pn_q[k] <= ibuf_pn_q[k+1];
         end
         ibuf_pc_q[IW'(ibuf_cnt_q - CW'(1))] <= pcq_q[0];
         ibuf_in_q[IW'(ibuf_cnt_q - CW'(1))] <= instr_rdata_i;
+        ibuf_pn_q[IW'(ibuf_cnt_q - CW'(1))] <= pcq_pn_q[0];
       end else if (resp_keep) begin
         ibuf_pc_q[IW'(ibuf_cnt_q)] <= pcq_q[0];
         ibuf_in_q[IW'(ibuf_cnt_q)] <= instr_rdata_i;
+        ibuf_pn_q[IW'(ibuf_cnt_q)] <= pcq_pn_q[0];
         ibuf_cnt_q            <= ibuf_cnt_q + CW'(1);
       end else if (pop) begin
         for (int k = 0; k < DEPTH-1; k++) begin
           ibuf_pc_q[k] <= ibuf_pc_q[k+1];
           ibuf_in_q[k] <= ibuf_in_q[k+1];
+          ibuf_pn_q[k] <= ibuf_pn_q[k+1];
         end
         ibuf_cnt_q <= ibuf_cnt_q - CW'(1);
       end

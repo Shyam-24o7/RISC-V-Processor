@@ -13,6 +13,12 @@ module tb_core_p5_lat #(
   logic        dwe;
   logic [3:0]  dbe;
   logic        ireq, iready, dreq, dready;
+  logic        bp_branch, bp_miss;
+  int          nbranch = 0, nmispred = 0;
+  always_ff @(posedge clk) begin
+    if (bp_branch) nbranch <= nbranch + 1;
+    if (bp_miss)   nmispred <= nmispred + 1;
+  end
 
   logic        rvfi_valid, rvfi_trap;
   logic [63:0] rvfi_order;
@@ -38,6 +44,7 @@ module tb_core_p5_lat #(
     .data_req_o(dreq), .data_addr_o(daddr), .data_we_o(dwe), .data_be_o(dbe),
     .data_wdata_o(dwdata), .data_rdata_i(drdata), .data_ready_i(dready),
     .data_pre_addr_o(), .flush_req_o(), .flush_done_i(1'b1),
+    .stat_branch_o(bp_branch), .stat_mispredict_o(bp_miss),
     .rvfi_valid_o(rvfi_valid), .rvfi_order_o(rvfi_order), .rvfi_insn_o(rvfi_insn),
     .rvfi_trap_o(rvfi_trap), .rvfi_rd_addr_o(rvfi_rd_addr),
     .rvfi_rd_wdata_o(rvfi_rd_wdata), .rvfi_pc_rdata_o(rvfi_pc_rdata),
@@ -110,6 +117,7 @@ module tb_core_p5_lat #(
       end else if (drain == 0) begin
         $display("PROGRAM DONE tohost=0x%08x cycles=%0d retired=%0d",
                  tohost_val, done_cycles, done_retired);
+        $display("BPRED branches=%0d mispredicts=%0d", nbranch, nmispred);
         $fclose(fd);
         $finish;
       end

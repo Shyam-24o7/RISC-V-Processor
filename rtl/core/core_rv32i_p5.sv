@@ -17,9 +17,14 @@
 //   exist until the end of MEM, so a dependent instruction must lose a cycle.
 //   Detected in ID, costs exactly one bubble.
 //
-//   Branches resolve in EX, flushing two instructions. Resolving in ID would
-//   cost one, but needs a comparator plus extra forwarding paths into ID, which
-//   lengthens the very stage that is usually critical.
+//   Branches are PREDICTED in IF (branch target buffer + bimodal counters) and
+//   CHECKED in EX. Every instruction carries the PC fetch went to after it;
+//   EX compares that with the real next PC and records a mismatch in EX/MEM,
+//   and the redirect fires from MEM, flushing the three younger instructions.
+//   A correctly predicted taken branch costs nothing. Redirecting straight
+//   from EX would save one cycle per misprediction but puts a 32-bit compare
+//   behind the forwarding muxes and branch adder on the path into the fetch
+//   unit; measured, that cost a third of the clock rate.
 //
 //   Traps and CSR access both happen at MEM, in program order. That gives
 //   precise exceptions for free - the trapping instruction has not written
@@ -54,6 +59,11 @@ module core_rv32i_p5
   output logic        flush_req_o,
   input  logic        flush_done_i,
 
+  // Branch-prediction statistics: one pulse per resolved branch or jump, and
+  // one per misprediction. For measurement; nothing in the core uses them.
+  output logic        stat_branch_o,
+  output logic        stat_mispredict_o,
+
   // RVFI retirement port, emitted at WB so retirement stays in program order.
   output logic        rvfi_valid_o,
   output logic [63:0] rvfi_order_o,
@@ -75,6 +85,9 @@ module core_rv32i_p5
     decoded_t    dec;
     logic [31:0] rs1_data;
     logic [31:0] rs2_data;
+    logic [31:0] pred_next;    // PC fetch went to after this instruction
+    logic        pred_is_seq;  // pred_next == pc + 4      (computed in ID)
+    logic        pred_is_tgt;  // pred_next == pc + imm    (computed in ID)
   } id_ex_t;
 
   typedef struct packed {
@@ -88,6 +101,8 @@ module core_rv32i_p5
     logic [31:0] mem_addr;
     logic [31:0] pc_next;      // this instruction's own next PC, for RVFI
     logic        fetch_misaligned;   // the only exception that needs EX to detect
+    logic        mispredict;         // fetch went the wrong way after this one
+    logic        br_taken;           // branch or jump actually taken
   } ex_mem_t;
 
   typedef struct packed {
@@ -109,7 +124,6 @@ module core_rv32i_p5
   // SystemVerilog requires a declaration before any reference.
   logic        stall_ld_use;
   logic        stall_mem;     // data access outstanding
-  logic        flush_branch;
   logic        flush_trap;
   logic [31:0] redirect_pc;
   logic        redirect_valid;
@@ -124,8 +138,23 @@ module core_rv32i_p5
   // core the way a direct memory read did. That is what lets fetch latency
   // overlap with work already in flight.
   logic        if_valid;
-  logic [31:0] if_pc, if_insn;
+  logic [31:0] if_pc, if_insn, if_pred_next;
   logic        if_pop;
+
+  // Branch predictor: looked up by the fetch unit at the PC it requests,
+  // checked in EX ("Branch resolution") and trained from MEM ("Predictor training").
+  logic [31:0] bp_lookup_pc, bp_target;
+  logic        bp_taken;
+  logic        bp_update, bp_update_cond, bp_update_taken;
+  logic [31:0] bp_update_pc, bp_update_target;
+
+  branch_predictor #(.BTB_ENTRIES(64), .BHT_ENTRIES(256)) u_bpred (
+    .clk_i(clk_i), .rst_ni(rst_ni),
+    .lookup_pc_i(bp_lookup_pc), .pred_taken_o(bp_taken), .pred_target_o(bp_target),
+    .update_i(bp_update), .update_pc_i(bp_update_pc),
+    .update_is_cond_i(bp_update_cond), .update_taken_i(bp_update_taken),
+    .update_target_i(bp_update_target)
+  );
 
   fetch_unit #(.DEPTH(4), .BOOT_ADDR(BOOT_ADDR)) u_fetch (
     .clk_i(clk_i), .rst_ni(rst_ni),
@@ -133,8 +162,9 @@ module core_rv32i_p5
     .instr_req_o(instr_req_o), .instr_addr_o(instr_addr_o),
     .instr_gnt_i(instr_gnt_i),
     .instr_rdata_i(instr_rdata_i), .instr_ready_i(instr_ready_i),
+    .pred_pc_o(bp_lookup_pc), .pred_taken_i(bp_taken), .pred_target_i(bp_target),
     .insn_valid_o(if_valid), .insn_pc_o(if_pc), .insn_o(if_insn),
-    .insn_ready_i(if_pop)
+    .insn_pred_next_o(if_pred_next), .insn_ready_i(if_pop)
   );
 
   // Decode consumes the head whenever the front end can advance.
@@ -185,6 +215,16 @@ module core_rv32i_p5
                         ((id_ex_q.dec.rd_addr == dec_id.rs1_addr) ||
                          (id_ex_q.dec.rd_addr == dec_id.rs2_addr));
 
+  // ---- Prediction pre-check ----
+  // Of the two places a branch or JAL can go, pc + 4 and pc + imm, neither
+  // depends on a register, so whether fetch guessed each of them can be
+  // decided here, a stage early. EX is then left with a one-bit choice
+  // instead of a 32-bit compare behind the forwarding muxes. Only JALR, whose
+  // target depends on rs1, still compares in EX.
+  logic pred_is_seq_id, pred_is_tgt_id;
+  assign pred_is_seq_id = (if_pred_next == (if_pc + 32'd4));
+  assign pred_is_tgt_id = (if_pred_next == (if_pc + dec_id.imm));
+
   // ---- ID/EX ----
   // While MEM is stalled the instruction in EX stays put, but its forwarding
   // sources do not: MEM/WB retires on the first stall edge and becomes a bubble.
@@ -198,7 +238,7 @@ module core_rv32i_p5
     end else if (stall_mem) begin
       id_ex_q.rs1_data <= fwd_rs1;                 // frozen behind MEM,
       id_ex_q.rs2_data <= fwd_rs2;                 // operands kept current
-    end else if (flush_trap || flush_branch || stall_ld_use) begin
+    end else if (flush_trap || stall_ld_use) begin
       id_ex_q <= '0;                               // insert a bubble
     end else begin
       id_ex_q.valid    <= if_valid;
@@ -207,6 +247,9 @@ module core_rv32i_p5
       id_ex_q.dec      <= dec_id;
       id_ex_q.rs1_data <= rs1_id_fwd;
       id_ex_q.rs2_data <= rs2_id_fwd;
+      id_ex_q.pred_next <= if_pred_next;
+      id_ex_q.pred_is_seq <= pred_is_seq_id;
+      id_ex_q.pred_is_tgt <= pred_is_tgt_id;
     end
   end
 
@@ -293,6 +336,21 @@ module core_rv32i_p5
   logic [31:0] pc_next_ex;
   assign pc_next_ex = take_branch_ex ? branch_target_ex : (id_ex_q.pc + 32'd4);
 
+  // ---- Branch resolution ----
+  // Fetch already went to pred_next after this instruction. If that is not
+  // where the program really goes, everything fetched behind it is wrong.
+  // One comparison covers every case: a wrong direction, a wrong target, and
+  // a stale prediction on an instruction that is not a branch at all.
+  // Equivalent to (pc_next_ex != pred_next), using the bits precomputed in ID
+  // wherever the real next PC is pc + 4 or pc + imm.
+  logic mispredict_ex;
+  always_comb begin
+    if (!id_ex_q.valid)            mispredict_ex = 1'b0;
+    else if (id_ex_q.dec.is_jalr)  mispredict_ex = (branch_target_ex != id_ex_q.pred_next);
+    else if (take_branch_ex)       mispredict_ex = !id_ex_q.pred_is_tgt;
+    else                           mispredict_ex = !id_ex_q.pred_is_seq;
+  end
+
   // ---- Address generation and alignment checks ----
   logic [31:0] mem_addr_ex;
   assign mem_addr_ex = fwd_rs1 + id_ex_q.dec.imm;
@@ -324,6 +382,8 @@ module core_rv32i_p5
       ex_mem_q.mem_addr   <= mem_addr_ex;
       ex_mem_q.pc_next    <= pc_next_ex;
       ex_mem_q.fetch_misaligned <= misaligned_fetch_ex;
+      ex_mem_q.mispredict       <= mispredict_ex;
+      ex_mem_q.br_taken         <= take_branch_ex;
     end
   end
 
@@ -473,6 +533,23 @@ module core_rv32i_p5
   logic mem_leaves;
   assign mem_leaves = ex_mem_q.valid && !stall_mem;
 
+  // ---- Predictor training, from MEM ----
+  // Done one cycle after the branch resolves, from registered values. Training
+  // straight from EX put the branch comparison in front of the enables of every
+  // counter and was the critical path. A branch in MEM never stalls, so this
+  // fires exactly once per branch; a branch whose target traps is not learned.
+  logic is_ctrl_mem;
+  assign is_ctrl_mem      = ex_mem_q.dec.is_branch || ex_mem_q.dec.is_jal || ex_mem_q.dec.is_jalr;
+  assign bp_update        = mem_leaves && is_ctrl_mem && !trap_taken;
+  assign bp_update_pc     = ex_mem_q.pc;
+  assign bp_update_cond   = ex_mem_q.dec.is_branch;
+  assign bp_update_taken  = ex_mem_q.br_taken;
+  assign bp_update_target = ex_mem_q.pc_next;
+
+  // Measurement only: resolved branches/jumps and mispredictions.
+  assign stat_branch_o     = mem_leaves && is_ctrl_mem;
+  assign stat_mispredict_o = mem_leaves && ex_mem_q.mispredict;
+
   csr_file u_csr_file (
     .clk_i(clk_i), .rst_ni(rst_ni),
     .addr_i(ex_mem_q.dec.imm[11:0]), .wdata_i(csr_wdata), .we_i(csr_we),
@@ -508,16 +585,21 @@ module core_rv32i_p5
   end
 
   // ---- Redirect and flush control ----
-  // Trap outranks mret outranks FENCE.I outranks branch: an older instruction's decision wins.
-  assign flush_trap = trap_taken || mret_taken || fence_i_done;
-  assign flush_branch = take_branch_ex && !flush_trap;
+  // Trap outranks mret outranks FENCE.I outranks a branch misprediction: they
+  // are all decided in MEM, by the same instruction, in that priority.
+  // A misprediction found in EX last cycle redirects now, from MEM. Everything
+  // younger - in ID/EX, IF/ID and the fetch buffer - is on the wrong path.
+  logic mispredict_mem;
+  assign mispredict_mem = ex_mem_q.valid && ex_mem_q.mispredict && !trap_taken;
+
+  assign flush_trap   = trap_taken || mret_taken || fence_i_done || mispredict_mem;
 
   always_comb begin
     redirect_valid = 1'b1;
     if      (trap_taken)     redirect_pc = mtvec;
     else if (mret_taken)     redirect_pc = mepc;
     else if (fence_i_done)   redirect_pc = ex_mem_q.pc + 32'd4;
-    else if (take_branch_ex) redirect_pc = branch_target_ex;
+    else if (mispredict_mem) redirect_pc = ex_mem_q.pc_next;   // the real path
     else begin
       redirect_pc    = '0;
       redirect_valid = 1'b0;

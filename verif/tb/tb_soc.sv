@@ -10,7 +10,7 @@ module tb_soc #(
   logic         m_req, m_we, m_ready;
   logic [27:0]  m_addr;
   logic [127:0] m_wdata, m_rdata;
-  logic         ic_hit, ic_miss, dc_hit, dc_miss;
+  logic         ic_hit, ic_miss, dc_hit, dc_miss, bp_branch, bp_miss;
 
   logic        rvfi_valid, rvfi_trap;
   logic [63:0] rvfi_order;
@@ -31,7 +31,8 @@ module tb_soc #(
     .rvfi_trap_o(rvfi_trap), .rvfi_rd_addr_o(rvfi_rd_addr),
     .rvfi_rd_wdata_o(rvfi_rd_wdata), .rvfi_pc_rdata_o(rvfi_pc_rdata),
     .rvfi_pc_wdata_o(rvfi_pc_wdata),
-    .ic_hit_o(ic_hit), .ic_miss_o(ic_miss), .dc_hit_o(dc_hit), .dc_miss_o(dc_miss)
+    .ic_hit_o(ic_hit), .ic_miss_o(ic_miss), .dc_hit_o(dc_hit), .dc_miss_o(dc_miss),
+    .bp_branch_o(bp_branch), .bp_mispredict_o(bp_miss)
   );
 
   main_mem #(.WORDS(65536), .LATENCY(LATENCY)) mem (
@@ -63,12 +64,14 @@ module tb_soc #(
     end
   end
 
-  int ihit = 0, imiss = 0, dhit = 0, dmiss = 0;
+  int ihit = 0, imiss = 0, dhit = 0, dmiss = 0, nbranch = 0, nmispred = 0;
   always_ff @(posedge clk) begin
     if (ic_hit)  ihit  <= ihit + 1;
     if (ic_miss) imiss <= imiss + 1;
     if (dc_hit)  dhit  <= dhit + 1;
     if (dc_miss) dmiss <= dmiss + 1;
+    if (bp_branch) nbranch <= nbranch + 1;
+    if (bp_miss)   nmispred <= nmispred + 1;
   end
 
   // Completion is the tohost store's HANDSHAKE at the core's data port. With
@@ -95,6 +98,7 @@ module tb_soc #(
         $display("PROGRAM DONE tohost=0x%08x cycles=%0d retired=%0d",
                  tohost_val, done_cycles, done_retired);
         $display("CACHE ihit=%0d imiss=%0d dhit=%0d dmiss=%0d", ihit, imiss, dhit, dmiss);
+        $display("BPRED branches=%0d mispredicts=%0d", nbranch, nmispred);
         $fclose(fd);
         $finish;
       end
