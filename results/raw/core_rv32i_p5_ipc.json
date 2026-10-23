@@ -2,7 +2,7 @@
   "core": "core_rv32i_p5",
   "benchmark": "hello",
   "retired": 296,
-  "cycles": 484,
-  "ipc": 0.612,
-  "note": "Below 1.000 by design, and lower than the 0.701 measured before the fetch unit existed: with ideal (zero-latency) memory the prefetch buffer's registered response is pure overhead. The same core wins at every non-zero latency - see results/experiments.md. A pipeline also loses cycles to load-use and CSR-use interlocks and the two-instruction flush on every taken branch; it buys those back with a shorter critical path, so the comparison that matters is IPC x Fmax, and only under realistic memory."
+  "cycles": 381,
+  "ipc": 0.777,
+  "note": "With branch prediction (BTB + bimodal), ideal memory. Was 0.612 (484 cycles) before prediction. A correctly predicted branch costs nothing; a misprediction squashes three instructions; load-use and CSR-use interlocks still cost one cycle each. See results/experiments.md section 7."
 }

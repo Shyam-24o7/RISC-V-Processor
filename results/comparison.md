@@ -7,8 +7,8 @@ with the same pinned toolchain, so the rows are directly comparable.
 | Core | IPC | Fmax (MHz) | LUT / FF / BRAM / DSP | MIPS |
 |---|---|---|---|---|
 | RV32I single-cycle | 1.000 | 216.7 | 2123 / 1438 / 0 / 0 | 216.7 |
-| RV32I 5-stage pipeline | 0.612 | 259.0 | 2718 / 2446 / 0 / 0 | 158.5 |
-| RV32I pipeline + L1 I$/D$ (4 KiB each) | - | 214.4 | 5740 / 3654 / 10 / 0 | - |
+| RV32I 5-stage pipeline + branch prediction | 0.777 | 264.4 | 4110 / 3401 / 0 / 0 | 205.4 |
+| RV32I pipeline + prediction + L1 I$/D$ (4 KiB each) | - | 213.5 | 6788 / 4604 / 10 / 0 | - |
 
 **IPC alone is misleading.** A single-cycle datapath retires one instruction per
 clock, but one clock period must then contain fetch, decode, execute, memory and

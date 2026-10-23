@@ -121,3 +121,45 @@ Fmax 214.4 MHz, 5740 LUT, 3654 FF, 10 BRAM, 0 combinational loops.
 The pipeline alone reaches 259.0 MHz, so adding the caches costs clock rate. The
 worst path in `timing.rpt` runs from a data-cache tag RAM to the enable of a
 data-cache data RAM. These are post-synthesis estimates.
+
+## 7. Branch prediction: BTB + bimodal predictor (2026-10)
+
+A 64-entry direct-mapped branch target buffer and a 256-entry table of 2-bit
+counters, looked up at the fetch PC. Each instruction carries the PC fetch went
+to after it; EX checks it, the redirect fires from MEM (3-instruction penalty),
+and the predictor is trained from MEM. Every run matches Spike; riscv-tests
+54/58 on every design and latency, unchanged.
+
+Cycles, before -> after:
+
+| Program | Design | Wait states | Before | After | Speedup |
+|---|---|---|---|---|---|
+| hello.c | pipeline | 0 | 484 | 381 | 1.27x |
+| hello.c | pipeline | 4 | 809 | 637 | 1.27x |
+| hello.c | pipeline | 10 | 1439 | 1201 | 1.20x |
+| hello.c | pipeline + caches | 1 | 575 | 471 | 1.22x |
+| hello.c | pipeline + caches | 10 | 880 | 785 | 1.12x |
+| cachestress.c | pipeline | 1 | 51423 | 39773 | 1.29x |
+| cachestress.c | pipeline | 10 | 167919 | 133588 | 1.26x |
+| cachestress.c | pipeline + caches | 1 | 67270 | 55621 | 1.21x |
+| cachestress.c | pipeline + caches | 10 | 126479 | 114830 | 1.10x |
+
+Prediction accuracy: cachestress.c 99.4% (24 mispredictions in 3930 branches
+and jumps); hello.c 78% (21 in 96) - a short program whose branches mostly run
+too few times to train. Pipeline IPC with ideal memory: hello.c 0.61 -> 0.78,
+cachestress.c 0.98. On the cached system the saving is the same 11649 cycles at
+every latency: prediction removes branch penalties, not memory stalls.
+
+Synthesis, three iterations on the pipeline (core_rv32i_p5):
+
+| Version | Fmax (MHz) | LUT | FF | Critical path |
+|---|---|---|---|---|
+| no prediction | 259.0 | 2718 | 2446 | - |
+| redirect from EX, BTB in flip-flops | 175.4 | 5454 | 6881 | forwarding -> branch -> 32-bit next-PC compare -> fetch |
+| redirect from MEM, BTB arrays in LUT memory | 217.5 | 4076 | 3384 | branch outcome -> counter enables |
+| + training from MEM, ID pre-check of pc+4 / pc+imm | 264.4 | 4110 | 3401 | - |
+
+The final version is faster than the pipeline without prediction. Cycle counts
+are identical between the last two versions. Cached system (rv32_soc): 213.5 MHz,
+6788 LUT, 4604 FF, 10 BRAM - its critical path is still the data-cache store-hit
+path, so prediction does not change its clock.

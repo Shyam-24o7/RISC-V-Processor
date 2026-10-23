@@ -13,8 +13,8 @@ from pathlib import Path
 ORDER = ["core_rv32i", "core_rv32i_p5", "rv32_soc"]
 LABEL = {
     "core_rv32i":    "RV32I single-cycle",
-    "core_rv32i_p5": "RV32I 5-stage pipeline",
-    "rv32_soc":      "RV32I pipeline + L1 I$/D$ (4 KiB each)",
+    "core_rv32i_p5": "RV32I 5-stage pipeline + branch prediction",
+    "rv32_soc":      "RV32I pipeline + prediction + L1 I$/D$ (4 KiB each)",
 }
 
 HEADER = """# Core Comparison

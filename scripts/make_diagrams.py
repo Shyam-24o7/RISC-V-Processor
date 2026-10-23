@@ -33,7 +33,7 @@ NEUTRAL = ("#f8fafc", "#64748b")
 REG = "#334155"
 FWD, CTRL, EARLY, FLUSH = "#ea580c", "#dc2626", "#0d9488", "#9333ea"
 ARROW_COLORS = [INK, MUTED, FWD, CTRL, EARLY, FLUSH, "#0284c7", "#16a34a", "#e11d48",
-                "#ca8a04", "#4f46e5", "#c2410c"]
+                "#ca8a04", "#4f46e5", "#c2410c", "#1d72b8"]
 
 
 def esc(s: str) -> str:
@@ -279,6 +279,10 @@ def pipeline():
     s.label(184, 484, "gnt·rvalid·rdata", size=10)
     s.arrow([(248, 327), (280, 327), (280, 356), (298, 356)], INK)
     s.label(282, 314, "insn", size=10)
+    s.box(50, 640, 184, 70, ("#eaf3fb", "#1d72b8"), "branch predictor",
+          "BTB (64) + bimodal BHT (256)\nlooked up at fetch_pc", size=12.5, subsize=10.5)
+    s.arrow([(242, 640), (242, 452)], "#1d72b8", dash="5 4")
+    s.label(220, 622, "predicted next PC", size=9.5, color="#1d72b8")
 
     # ---------------- ID ----------------
     s.box(300, 158, 170, 120, STAGE["ID"], "register file",
@@ -329,9 +333,9 @@ def pipeline():
     s.box(700, 456, 180, 44, STAGE["EX"], "address adder", "rs1 + imm", size=12.5, subsize=10.5)
     s.arrow([(880, 478), (916, 478)], INK)
     s.box(700, 548, 190, 66, STAGE["EX"], "branch unit",
-          "6 conditions · target\npc+imm or rs1+imm", subsize=10.5)
+          "outcome + target, checked\nagainst the prediction", subsize=10.5)
     s.arrow([(890, 576), (916, 576)], INK)
-    s.label(902, 556, "pc_next", size=9.5)
+    s.label(902, 556, "pc_next · mispredict", size=9.5)
     # early data address: skips the EX/MEM register on purpose
     s.arrow([(790, 500), (790, 514), (958, 514)], EARLY, dash="5 4", width=2)
     s.label(842, 528, "pre_addr (skips EX/MEM)", size=9.5, color=EARLY)
@@ -354,9 +358,9 @@ def pipeline():
     s.arrow([(1201, 420), (1201, 338)], INK)
     s.label(1230, 380, "load", size=9.5)
     s.arrow([(1216, 266), (1278, 266)], INK)
-    s.box(960, 560, 172, 100, CSR, "trap · mret · FENCE.I",
-          "classify exceptions (precise)\nredirect: mtvec / mepc / pc+4\nflush_req ⇄ flush_done",
-          size=12.5, subsize=10.5)
+    s.box(960, 560, 172, 100, CSR, "redirect · train",
+          "trap / mret / FENCE.I / mispredict\n→ mtvec / mepc / pc+4 / real PC\n"
+          "trains the branch predictor", size=12.5, subsize=10.5)
     s.arrow([(942, 610), (958, 610)], INK)
 
     # ---------------- WB ----------------
@@ -376,10 +380,9 @@ def pipeline():
             color=FWD)
 
     # ---------------- redirect lane ----------------
-    s.arrow([(795, 614), (795, 840)], CTRL, width=2, head=False)
     s.arrow([(1046, 660), (1046, 840), (256, 840), (256, 432), (250, 432)], CTRL, width=2)
-    s.label(520, 840, "redirect_pc   priority: trap › mret › FENCE.I › taken branch", size=10.5,
-            color=CTRL)
+    s.label(560, 840, "redirect_pc from MEM   priority: trap › mret › FENCE.I › branch "
+            "misprediction", size=10.5, color=CTRL)
 
     # ---------------- legend / notes ----------------
     lx, ly = 30, 884
@@ -393,10 +396,253 @@ def pipeline():
     s.text(30, 920, "stall_mem (D$ not ready, or FENCE.I waiting): fetch stops popping, ID/EX "
            "holds and re-latches its forwarded operands, EX/MEM holds, MEM/WB receives a bubble.",
            size=11.5, anchor="start", fill=MUTED)
-    s.text(30, 942, "flush (trap, mret, FENCE.I done, taken branch): younger instructions become "
-           "bubbles; the fetch unit drops its buffer and discards responses still owed.",
+    s.text(30, 942, "flush (trap, mret, FENCE.I done, branch misprediction): younger instructions "
+           "become bubbles; the fetch unit drops its buffer and discards responses still owed.",
            size=11.5, anchor="start", fill=MUTED)
     s.save("pipeline.svg")
+
+
+
+# ===========================================================================
+# 2b. Conventional pipelined datapath (Patterson & Hennessy notation)
+# ===========================================================================
+BLUE = "#1d72b8"
+BLUE_FILL = "#eaf3fb"
+
+
+def conventional():
+    """Datapath and control drawn in the textbook convention: black datapath,
+    blue control, 'Mux' pills, trapezoid adders and ALU, tall pipeline
+    registers carrying their WB / M / EX control fields."""
+    s = Svg(1600, 940, "Pipelined datapath and control in textbook notation")
+    s.text(30, 38, "core_rv32i_p5 — pipelined datapath and control", size=20, anchor="start",
+           weight="700")
+    s.text(30, 60, "Textbook notation (Patterson & Hennessy): black = datapath, blue = control. "
+           "Branches are predicted in IF, checked in EX, redirected and trained from MEM.", size=12.5, anchor="start",
+           fill=MUTED)
+
+    def pill(x, y, h, label="M\nu\nx", w=24):
+        s.rect(x, y, w, h, "#ffffff", INK, rx=w / 2, sw=1.5)
+        s.text(x + w / 2, y + h / 2 + 1, label, size=9.5, weight="600")
+
+    def adder(x, y, w=46, h=70, label="Add"):
+        s.raw(f'<polygon points="{x},{y} {x + w},{y + h * 0.28} {x + w},{y + h * 0.72} '
+              f'{x},{y + h} {x},{y + h * 0.62} {x + w * 0.22},{y + h / 2} {x},{y + h * 0.38}" '
+              f'fill="#ffffff" stroke="{INK}" stroke-width="1.5"/>')
+        s.text(x + w * 0.6, y + h / 2 + 4, label, size=10, weight="600")
+
+    def unit(x, y, w, h, label, rx=None, size=11):
+        s.rect(x, y, w, h, BLUE_FILL, BLUE, rx=(rx if rx is not None else h / 2), sw=1.6)
+        s.text(x + w / 2, y + h / 2 + 4, label, size=size, weight="600", fill=BLUE)
+
+    def blk(x, y, w, h, label, size=11.5):
+        s.rect(x, y, w, h, "#ffffff", INK, rx=4, sw=1.5)
+        s.text(x + w / 2, y + h / 2 + 4, label, size=size, weight="600")
+
+    def preg(x, name, fields):
+        top, bot = 190, 800
+        s.rect(x, top, 30, bot - top, "#f1f5f9", INK, rx=3, sw=1.6)
+        s.text(x + 15, top - 8, name, size=11.5, weight="700")
+        for i, f in enumerate(fields):
+            s.rect(x + 2, top + 4 + i * 24, 26, 20, BLUE_FILL, BLUE, rx=2, sw=1.2)
+            s.text(x + 15, top + 18 + i * 24, f, size=9.5, weight="700", fill=BLUE)
+
+    def L(pts, c=INK, w=1.5, dash=None, head=True):
+        s.arrow(pts, c, width=w, dash=dash, head=head)
+
+    def dot(x, y, c=INK):
+        s.raw(f'<circle cx="{x}" cy="{y}" r="3" fill="{c}"/>')
+
+    # stage names
+    for nm, x0, x1 in [("IF", 20, 330), ("ID", 360, 640), ("EX", 670, 1040),
+                       ("MEM", 1070, 1300), ("WB", 1330, 1590)]:
+        s.text((x0 + x1) / 2, 92, nm, size=14, weight="700", fill=STAGE[nm][1])
+
+    # pipeline registers
+    preg(330, "IF/ID", [])
+    preg(640, "ID/EX", ["WB", "M", "EX"])
+    preg(1040, "EX/MEM", ["WB", "M"])
+    preg(1300, "MEM/WB", ["WB"])
+    s.text(345, 815, "fetch buffer", size=9.5, fill=MUTED)
+
+    # ================= IF =================
+    pill(36, 420, 110)
+    blk(84, 450, 40, 50, "PC", 12)
+    L([(60, 475), (82, 475)])
+    blk(150, 420, 140, 110, "Instruction\nmemory\n(L1 I-cache)", 11)
+    L([(124, 475), (148, 475)])
+    L([(290, 475), (328, 475)])
+    s.label(305, 465, "insn", size=9.5)
+    adder(170, 250)
+    L([(132, 475), (132, 300), (168, 300)])
+    dot(132, 475)
+    s.text(150, 268, "4", size=11, weight="700")
+    L([(156, 272), (168, 272)])
+    # pc+4 back to PC mux
+    L([(216, 285), (236, 285), (236, 232), (22, 232), (22, 440), (34, 440)])
+    s.label(120, 232, "pc + 4", size=9.5)
+    # branch predictor
+    unit(150, 330, 140, 64, "BTB (64)\n+ bimodal BHT (256)", rx=8, size=10.5)
+    L([(132, 362), (148, 362)])
+    L([(150, 380), (14, 380), (14, 470), (34, 470)])
+    s.label(80, 380, "predicted target", size=9.5)
+    L([(290, 345), (306, 345), (306, 160), (48, 160), (48, 418)], BLUE, dash="5 3")
+    s.label(176, 160, "predict taken", size=9.5, color=BLUE)
+    # PC and prediction also travel down the pipe
+    L([(140, 500), (140, 560), (328, 560)])
+    dot(140, 475)
+    s.label(240, 560, "pc, pred_next", size=9.5)
+
+    # ================= ID =================
+    unit(388, 126, 170, 46, "Hazard\ndetection unit", rx=10, size=10.5)
+    unit(440, 205, 120, 66, "Control", size=12)
+    pill(596, 205, 64, label="M\nu\nx", w=22)
+    s.text(588, 214, "0", size=10, weight="700")
+    L([(560, 238), (594, 238)], BLUE)
+    L([(618, 237), (642, 237)], BLUE)
+    s.rect(410, 380, 160, 180, "#ffffff", INK, rx=4, sw=1.5)
+    s.text(490, 400, "Registers", size=12.5, weight="700")
+    for yy, t in [(430, "Read reg 1"), (470, "Read reg 2"), (510, "Write reg"),
+                  (545, "Write data")]:
+        s.text(416, yy, t, size=9.5, anchor="start", fill=MUTED)
+    for yy, t in [(430, "Read data 1"), (500, "Read data 2")]:
+        s.text(564, yy, t, size=9.5, anchor="end", fill=MUTED)
+    s.raw(f'<ellipse cx="490" cy="640" rx="46" ry="28" fill="#ffffff" stroke="{INK}" '
+          f'stroke-width="1.5"/>')
+    s.text(490, 644, "Imm Gen", size=11, weight="600")
+    # instruction fields out of IF/ID
+    L([(360, 475), (380, 475), (380, 238), (438, 238)], INK)
+    s.label(392, 300, "opcode", size=9)
+    L([(380, 426), (408, 426)])
+    L([(380, 466), (408, 466)])
+    L([(380, 466), (380, 640), (442, 640)])
+    dot(380, 426); dot(380, 466); dot(380, 475)
+    s.label(395, 452, "rs1  rs2", size=9)
+    L([(380, 640), (380, 700), (638, 700)])
+    s.label(520, 700, "rd", size=9.5)
+    L([(570, 430), (638, 430)])
+    L([(570, 500), (638, 500)])
+    L([(536, 640), (638, 640)])
+    s.label(600, 628, "imm", size=9.5)
+    L([(360, 560), (638, 560)])
+    # hazard detection
+    L([(473, 172), (473, 186), (607, 186), (607, 203)], BLUE, dash="5 3")
+    L([(388, 149), (318, 149), (318, 212), (328, 212)], BLUE, dash="5 3")
+    s.label(352, 141, "stall", size=9, color=BLUE)
+    L([(640, 300), (628, 300), (628, 160), (560, 160)], BLUE, dash="5 3")
+    s.label(596, 300, "MemRead · rd", size=9, color=BLUE)
+
+    # ================= EX =================
+    pill(696, 395, 70)
+    pill(696, 480, 70)
+    L([(670, 430), (694, 430)])
+    L([(670, 500), (694, 500)])
+    pill(770, 488, 70)
+    L([(720, 515), (768, 515)])
+    L([(670, 640), (750, 640), (750, 540), (768, 540)])
+    # ALU
+    s.raw(f'<polygon points="826,388 900,420 900,520 826,552 826,494 842,470 826,446" '
+          f'fill="#ffffff" stroke="{INK}" stroke-width="1.6"/>')
+    s.text(872, 474, "ALU", size=13, weight="700")
+    L([(720, 430), (824, 430)])
+    L([(794, 523), (824, 523)])
+    L([(900, 470), (1038, 470)])
+    s.label(990, 460, "ALU result", size=9.5)
+    # store data
+    L([(708, 550), (708, 590), (1038, 590)])
+    dot(708, 560)
+    s.label(990, 580, "store data", size=9.5)
+    # rd through
+    L([(670, 700), (1038, 700)])
+    # branch: target adder + compare + misprediction check
+    adder(760, 260)
+    L([(670, 560), (680, 560), (680, 312), (758, 312)])
+    L([(750, 640), (750, 286), (758, 286)])
+    dot(750, 640)
+    blk(880, 330, 104, 42, "Branch\ncompare", 10.5)
+    L([(724, 420), (724, 351), (878, 351)])
+    dot(724, 430)
+    unit(880, 230, 150, 64, "mispredict?\nnext PC ≠ pred_next", rx=8, size=10.5)
+    L([(806, 295), (870, 295), (870, 262), (878, 262)])
+    L([(932, 330), (932, 296)], BLUE, dash="5 3")
+    L([(686, 560), (686, 214), (960, 214), (960, 228)], INK)
+    dot(686, 560)
+    s.label(800, 214, "pc + 4, pred_next", size=9)
+    # ALU control from EX field
+    L([(670, 250), (862, 250), (862, 402)], BLUE, dash="5 3")
+    s.label(760, 250, "ALUOp", size=9, color=BLUE)
+    # forwarding unit
+    unit(740, 744, 180, 46, "Forwarding unit", rx=10)
+    L([(740, 767), (708, 767), (708, 552)], BLUE, dash="5 3")
+    L([(800, 744), (800, 474), (708, 474), (708, 467)], BLUE, dash="5 3")
+    # forwarding data paths
+    L([(1064, 470), (1064, 830), (684, 830), (684, 452), (694, 452)])
+    s.label(870, 830, "EX/MEM → EX forward", size=9.5)
+    L([(684, 520), (694, 520)])
+
+    # ================= MEM =================
+    s.rect(1090, 420, 150, 140, "#ffffff", INK, rx=4, sw=1.5)
+    s.text(1165, 444, "Data memory", size=11.5, weight="700")
+    s.text(1165, 506, "(L1 D-cache)", size=10.5, fill=MUTED)
+    s.text(1096, 474, "Address", size=9.5, anchor="start", fill=MUTED)
+    s.text(1096, 534, "Write data", size=9.5, anchor="start", fill=MUTED)
+    s.text(1234, 474, "Read data", size=9.5, anchor="end", fill=MUTED)
+    L([(1070, 470), (1088, 470)])
+    L([(1070, 590), (1080, 590), (1080, 530), (1088, 530)])
+    L([(1240, 470), (1298, 470)])
+    L([(1064, 470), (1064, 380), (1298, 380)])
+    dot(1064, 470)
+    s.label(1110, 380, "ALU result / link", size=9.5)
+    unit(1100, 610, 130, 60, "CSRs +\ntrap unit", rx=8, size=10.5)
+    L([(1070, 640), (1098, 640)])
+    L([(1230, 640), (1298, 640)])
+    L([(1070, 700), (1298, 700)])
+    L([(1070, 216), (1165, 216), (1165, 418)], BLUE, dash="5 3")
+    s.label(1120, 205, "MemRead / MemWrite", size=9, color=BLUE)
+
+    # ================= WB =================
+    pill(1360, 400, 260)
+    L([(1330, 470), (1358, 470)])
+    L([(1330, 380), (1340, 380), (1340, 420), (1358, 420)])
+    L([(1330, 640), (1358, 640)])
+    L([(1330, 194), (1372, 194), (1372, 398)], BLUE, dash="5 3")
+    s.label(1430, 194, "MemtoReg / RegWrite", size=9, color=BLUE)
+    # writeback loop
+    L([(1384, 530), (1420, 530), (1420, 870), (396, 870), (396, 545), (408, 545)], "#e11d48",
+      w=2)
+    s.label(900, 870, "write data", size=9.5, color="#e11d48")
+    L([(1330, 700), (1440, 700), (1440, 886), (388, 886), (388, 510), (408, 510)])
+    s.label(900, 886, "write register (rd)", size=9.5)
+    # MEM/WB -> EX forward
+    L([(1420, 850), (676, 850), (676, 535), (694, 535)], INK, dash="6 3")
+    L([(676, 462), (694, 462)], INK, dash="6 3")
+    s.label(1090, 850, "MEM/WB → EX forward", size=9.5)
+    dot(1420, 850)
+
+    # ================= redirect =================
+    L([(1030, 262), (1038, 262)], BLUE, dash="5 3")
+    L([(1072, 262), (1082, 262), (1082, 104), (10, 104), (10, 505), (34, 505)], BLUE,
+      w=1.8)
+    L([(1230, 625), (1260, 625), (1260, 104), (1082, 104)], BLUE, w=1.8, head=False)
+    s.label(700, 104, "redirect from MEM: misprediction found in EX, or trap / mret / "
+            "FENCE.I  ·  flushes younger instructions", size=9.5, color=BLUE)
+    # predictor training, also from MEM
+    L([(1092, 300), (1092, 116), (270, 116), (270, 328)], BLUE, dash="5 3")
+    s.label(700, 116, "train BTB / BHT from MEM: pc, taken, target", size=9.5, color=BLUE)
+
+    # legend
+    s.text(1460, 280, "Notation", size=11.5, weight="700", anchor="start")
+    L([(1460, 300), (1494, 300)])
+    s.text(1500, 304, "datapath", size=10.5, anchor="start", fill=MUTED)
+    L([(1460, 322), (1494, 322)], BLUE, dash="5 3")
+    s.text(1500, 326, "control", size=10.5, anchor="start", fill=MUTED)
+    L([(1460, 344), (1494, 344)], "#e11d48", w=2)
+    s.text(1500, 348, "writeback", size=10.5, anchor="start", fill=MUTED)
+    s.text(30, 920, "Simplified like the textbook figure: the fetch unit's 4-entry buffer is "
+           "drawn as IF/ID, and the WB→ID register bypass, the early D-cache address and "
+           "the separate address adder are omitted (see pipeline.svg for those).",
+           size=10.5, anchor="start", fill=MUTED)
+    s.save("pipeline_datapath.svg")
 
 
 # ===========================================================================
@@ -564,7 +810,7 @@ def cache():
 # 5. Hazard timing
 # ===========================================================================
 def hazards():
-    s = Svg(1300, 760, "Pipeline hazard timing")
+    s = Svg(1300, 830, "Pipeline hazard timing")
     s.text(30, 40, "How the pipeline handles hazards", size=20, anchor="start", weight="700")
     s.text(30, 62, "Each row is one instruction, each column one clock cycle. Simplified: the "
            "fetch unit's buffering is not shown.", size=12.5, anchor="start", fill=MUTED)
@@ -620,17 +866,18 @@ def hazards():
             anchor="start")
     s.text(904, 430, "CSR reads behave the same way", size=10.5, fill=MUTED, anchor="start")
 
-    c = panel(530, "3 · Taken branch — resolved in EX, younger instructions squashed",
-              "The branch decision and target are known in EX. Everything fetched behind it is "
-              "flushed and fetch restarts at the target.",
+    c = panel(530, "3 · Mispredicted branch — checked in EX, redirected from MEM",
+              "A correctly predicted branch costs nothing. A misprediction is found in EX, the "
+              "redirect fires from MEM, and the three instructions behind it are squashed.",
               [("beq  x1, x2, L", [(0, "IF"), (1, "ID"), (2, "EX"), (3, "MEM"), (4, "WB")]),
-               ("next (wrong path)", [(1, "IF"), (2, "ID"), (3, "xflushed")]),
-               ("next+4 (wrong path)", [(2, "IF"), (3, "xflushed")]),
-               ("L: target", [(3, "IF"), (4, "ID"), (5, "EX"), (6, "MEM"), (7, "WB")])])
-    a = c[(0, 2)]
-    gx = x0 + 3 * cw
-    s.arrow([(a[0] + 36, a[1]), (gx, a[1]), (gx, c[(3, 3)][1])], CTRL, width=2.2)
-    s.label(gx - 4, 742, "redirect to L in the cycle after EX", size=11, color=CTRL,
+               ("wrong path 1", [(1, "IF"), (2, "ID"), (3, "xflushed")]),
+               ("wrong path 2", [(2, "IF"), (3, "xflushed")]),
+               ("wrong path 3", [(3, "xflushed")]),
+               ("L: real next PC", [(4, "IF"), (5, "ID"), (6, "EX"), (7, "MEM"), (8, "WB")])])
+    a = c[(0, 3)]
+    gx = x0 + 4 * cw
+    s.arrow([(a[0] + 36, a[1]), (gx, a[1]), (gx, c[(4, 4)][1])], CTRL, width=2.2)
+    s.label(gx - 4, 800, "redirect from MEM to the real next PC", size=11, color=CTRL,
             anchor="end")
     s.save("hazards.svg")
 
@@ -692,10 +939,10 @@ def verification():
            size=11.5, fill=MUTED)
 
     # unit tests & lint
-    s.box(64, 470, 410, 110, ("#eff6ff", "#2563eb"), "15 self-checking unit testbenches",
-          "ALU · regfile · decoder · CSR file · fetch unit · RAM · main memory\n"
-          "arbiter · I-cache · D-cache (directed + thousands of random\n"
-          "accesses against a reference model) · smoke programs", subsize=10.5)
+    s.box(64, 470, 410, 110, ("#eff6ff", "#2563eb"), "16 self-checking unit testbenches",
+          "ALU · regfile · decoder · CSR file · fetch unit · branch predictor · RAM\n"
+          "main memory · arbiter · I-cache · D-cache (directed + thousands of\n"
+          "random accesses against a reference model) · smoke programs", subsize=10.5)
     s.box(64, 610, 410, 74, HAZ, "make lint  —  the gate in front of everything",
           "verilator --lint-only -Wall on every top; any warning fails.\n"
           "Compile errors stop the run; builds start from a clean directory.", subsize=10.5)
@@ -738,11 +985,11 @@ def charts():
     # cycles vs wait states, hello.c (results/experiments.md sections 2 and 6)
     fig, ax = plt.subplots(figsize=(8.6, 4.6), dpi=100)
     sc = ([0, 1, 2, 4, 10], [297, 595, 893, 1489, 3277])
-    p5 = ([0, 1, 2, 4, 10], [484, 507, 592, 809, 1439])
-    soc = ([1, 4, 10, 20], [575, 676, 880, 1220])
+    p5 = ([0, 1, 4, 10], [381, 404, 637, 1201])
+    soc = ([1, 4, 10, 20], [471, 575, 785, 1135])
     ax.plot(*sc, "o-", color="#64748b", lw=2.2, label="single-cycle core")
-    ax.plot(*p5, "s-", color="#d97706", lw=2.2, label="pipeline, no cache")
-    ax.plot(*soc, "D-", color="#0d9488", lw=2.6, label="pipeline + L1 caches (rv32_soc)")
+    ax.plot(*p5, "s-", color="#d97706", lw=2.2, label="pipeline + branch prediction, no cache")
+    ax.plot(*soc, "D-", color="#0d9488", lw=2.6, label="pipeline + prediction + L1 caches (rv32_soc)")
     for x, y in zip(*soc):
         ax.annotate(f"{y}", (x, y), textcoords="offset points", xytext=(0, -16), ha="center",
                     color="#0d9488", fontsize=10)
@@ -759,10 +1006,10 @@ def charts():
     print("wrote docs/img/chart_latency.svg")
 
     # FPGA resources (results/raw/*_synth.json)
-    names = ["single-cycle", "pipeline", "pipeline + caches"]
-    lut = [2123, 2718, 5740]
-    ff = [1438, 2446, 3654]
-    fmax = [216.7, 259.0, 214.4]
+    names = ["single-cycle", "pipeline + prediction", "+ L1 caches"]
+    lut = [2123, 4110, 6788]
+    ff = [1438, 3401, 4604]
+    fmax = [216.7, 264.4, 213.5]
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(9.6, 4.0), dpi=100,
                                  gridspec_kw={"width_ratios": [1.5, 1]})
     xs = range(3)
@@ -793,6 +1040,7 @@ def charts():
 if __name__ == "__main__":
     system()
     pipeline()
+    conventional()
     fetch_unit()
     cache()
     hazards()

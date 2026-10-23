@@ -1,8 +1,8 @@
 <h1 align="center">RV32I Pipelined Processor with an L1 Memory Hierarchy</h1>
 
 <p align="center">
-A five-stage pipelined RISC-V (RV32I) processor with split L1 instruction and data caches,
-written in SystemVerilog, checked instruction-by-instruction against the official reference
+A five-stage pipelined RISC-V (RV32I) processor with dynamic branch prediction and split L1
+instruction and data caches, written in SystemVerilog, checked instruction-by-instruction against the official reference
 simulator, and synthesised for an AMD/Xilinx Zynq UltraScale+ FPGA.
 </p>
 
@@ -14,10 +14,11 @@ simulator, and synthesised for an AMD/Xilinx Zynq UltraScale+ FPGA.
 |---|---|
 | **ISA** | RV32I base integer ISA, Zicsr, Zicntr, Zifencei; machine mode with precise traps |
 | **Core** | 5-stage in-order pipeline (IF · ID · EX · MEM · WB), full forwarding, decoupled fetch with a 4-entry prefetch buffer |
+| **Branch prediction** | 64-entry branch target buffer + 256-entry bimodal predictor (2-bit counters), predicted in IF, checked in EX; 99.4% accurate on a 32,000-instruction workload |
 | **Caches** | 4 KiB L1 I-cache + 4 KiB L1 D-cache, 2-way set-associative, 16-byte lines, LRU, write-back + write-allocate data cache, 1-cycle hits |
-| **FPGA** | XCK26 (Kria K26 / KV260): **214.4 MHz**, 5,740 LUTs, 3,654 flip-flops, 10 block RAMs, 0 DSPs (post-synthesis) |
-| **Verification** | Matches the Spike reference simulator instruction-for-instruction; 54/58 riscv-tests on every design, including runs with up to 10 memory wait states; 15 self-checking unit testbenches |
-| **Performance** | 1.64× fewer cycles than the uncached pipeline on `hello.c` and 1.33× on a cache stress test, both at 10 wait states |
+| **FPGA** | XCK26 (Kria K26 / KV260): cached system **213.5 MHz** (6,788 LUTs, 4,604 flip-flops, 10 block RAMs, 0 DSPs); pipeline alone 264.4 MHz (post-synthesis) |
+| **Verification** | Matches the Spike reference simulator instruction-for-instruction; 54/58 riscv-tests on every design, including runs with up to 10 memory wait states; 16 self-checking unit testbenches |
+| **Performance** | Branch prediction: pipeline IPC on `hello.c` 0.61 → 0.78 and 0.98 on the stress test. Caches: 1.53× fewer cycles than the uncached pipeline on `hello.c` at 10 wait states |
 | **Language / tools** | SystemVerilog · Verilator 5.026 · Spike 1.1.0 · GCC 13.2.0 · Vivado 2022.2 · Docker |
 
 ---
@@ -35,6 +36,7 @@ simulator, and synthesised for an AMD/Xilinx Zynq UltraScale+ FPGA.
    - [4.5 WB — writeback and retirement](#45-wb--writeback-and-retirement)
    - [4.6 Hazards, stalls and flushes](#46-hazards-stalls-and-flushes)
    - [4.7 Traps and the CSR file](#47-traps-and-the-csr-file)
+   - [4.8 Branch prediction](#48-branch-prediction)
 5. [The memory hierarchy](#5-the-memory-hierarchy)
    - [5.1 Cache organisation](#51-cache-organisation)
    - [5.2 The block-RAM template](#52-the-block-ram-template)
@@ -98,7 +100,7 @@ existing flow without changing a line of it.
 
 ```
 rtl/common   rv32_pkg (ISA constants)  alu  regfile  decoder  csr_file
-rtl/core     core_rv32i  core_rv32i_p5  fetch_unit
+rtl/core     core_rv32i  core_rv32i_p5  fetch_unit  branch_predictor
 rtl/mem      sram_1r1w  icache  dcache  mem_arbiter  main_mem*  latency_mem*  magic_mem*
 rtl/soc      rv32_soc                                   (* = simulation-only models)
 ```
@@ -156,14 +158,27 @@ Checked in this priority order, all precise:
 
 ## 4. The pipeline, stage by stage
 
+The figure below draws the pipeline in the conventional textbook notation (Patterson &
+Hennessy, *Computer Organization and Design*): black lines are the datapath, blue lines are
+control, multiplexers are "Mux" pills, adders and the ALU are trapezoids, and each pipeline
+register carries the WB / M / EX control fields its later stages need.
+
+<p align="center">
+  <img src="docs/img/pipeline_datapath.svg" alt="Pipelined datapath and control in textbook notation, with branch prediction in IF" width="100%">
+</p>
+
+The second figure is the same pipeline at the level of this implementation — every forwarding
+path, the decoupled fetch unit, the early data-cache address and the stall and flush paths:
+
 <p align="center">
   <img src="docs/img/pipeline.svg" alt="Five-stage pipeline datapath with forwarding and control paths" width="100%">
 </p>
 
-The core is a classic five-stage in-order pipeline (Patterson & Hennessy style) with three
-departures that matter: the **front end is decoupled** by a prefetch buffer, **traps and CSR
-accesses happen in MEM** rather than spread across stages, and the **data cache is read one
-cycle early** so that a hit completes in MEM without a stall.
+The core is a classic five-stage in-order pipeline with four departures that matter: the
+**front end is decoupled** by a prefetch buffer, **branches are predicted in IF** by a branch
+target buffer and bimodal predictor, **traps, CSR accesses and branch redirects happen in MEM**
+rather than spread across stages, and the **data cache is read one cycle early** so that a hit
+completes in MEM without a stall.
 
 Each pipeline register is a SystemVerilog `struct` carrying `valid`, the PC, the raw
 instruction and the decoded control bundle forward, so every later stage can see exactly what
@@ -171,8 +186,8 @@ instruction it holds — which is also what makes the RVFI trace at WB possible.
 
 | Register | Carries |
 |---|---|
-| ID/EX | `valid, pc, insn, decoded_t, rs1_data, rs2_data` |
-| EX/MEM | `valid, pc, insn, decoded_t, alu_result, rs1_data, store_data, mem_addr, pc_next, fetch_misaligned` |
+| ID/EX | `valid, pc, insn, decoded_t, rs1_data, rs2_data, pred_next, pred_is_seq, pred_is_tgt` |
+| EX/MEM | `valid, pc, insn, decoded_t, alu_result, rs1_data, store_data, mem_addr, pc_next, fetch_misaligned, mispredict, br_taken` |
 | MEM/WB | `valid, pc, insn, rd_addr, rd_we, wb_data, pc_next, trap` |
 
 ### 4.1 IF — the decoupled fetch unit
@@ -191,14 +206,18 @@ unit fixes that by decoupling fetch from decode.
 
 - **`fetch_pc`** runs ahead of decode. A request is presented whenever there is room for its
   response: *in-flight requests + buffered instructions < DEPTH (4)* and no redirect this cycle.
-  The request is **issued** — its PC queued, `fetch_pc` advanced by 4 — only when the memory
+  The request is **issued** — its PC queued, `fetch_pc` advanced — only when the memory
   grants it (`instr_req && instr_gnt`). The I-cache withholds the grant while it refills a line.
+- **Where `fetch_pc` goes next** is decided by the branch predictor, looked up at the PC being
+  requested: the predicted target if it predicts a taken branch or jump, otherwise `pc + 4`
+  ([4.8](#48-branch-prediction)). That predicted next PC is stored with the request and
+  travels with the instruction, so EX can check it.
 - **The in-flight PC queue** remembers the PC of every issued request, oldest first. Memory
   answers in order, so each response is paired with the oldest queued PC.
 - **The instruction buffer** holds up to four `{pc, insn}` pairs waiting for decode. Its head
   *is* the IF/ID interface: `insn_valid` is simply "the buffer is not empty". When the buffer is
   empty a bubble flows down the pipeline instead of the pipeline freezing.
-- **Redirects** (branch, trap, `mret`, `FENCE.I`) load the new PC, clear the buffer and the
+- **Redirects** (branch misprediction, trap, `mret`, `FENCE.I`) load the new PC, clear the buffer and the
   queue, and add every still-unanswered request to **`discard_q`**. Responses that arrive for
   the abandoned path are counted down and dropped, so a wrong-path instruction can never reach
   decode. The counter *accumulates* across redirects: two redirects in consecutive cycles (a
@@ -261,10 +280,12 @@ operand B is `rs2` or the immediate.
 next instruction can forward it (a `call` followed immediately by a use of `ra` does not stall).
 
 **Branch unit.** Evaluates the six conditions (`== ≠ <s ≥s <u ≥u`) on the forwarded operands
-and computes the target: `pc + imm` for branches and `JAL`, `(rs1 + imm) & ~1` for `JALR`. A
-taken branch or jump redirects fetch and flushes the two younger instructions. A target that is
-not 4-byte aligned is recorded as `fetch_misaligned` — the only exception that has to be
-detected in EX, because it depends on the branch decision.
+and computes the target: `pc + imm` for branches and `JAL`, `(rs1 + imm) & ~1` for `JALR`. It
+then **checks the prediction**: if the real next PC differs from the PC fetch already went to,
+the instruction is marked `mispredict` in EX/MEM and the redirect fires from MEM
+([4.8](#48-branch-prediction)). A target that is not 4-byte aligned is recorded as
+`fetch_misaligned` — the only exception that has to be detected in EX, because it depends on
+the branch decision.
 
 **Address adder.** `mem_addr = rs1 + imm`. This value goes two places: into EX/MEM as usual,
 and — **bypassing EX/MEM** — to the data cache as `data_pre_addr`, so the cache can read its
@@ -293,7 +314,8 @@ path). The trapping instruction:
 That is what makes exceptions **precise** with no extra recovery hardware.
 
 **`MRET`** redirects to `mepc`. **`FENCE.I`** holds in MEM until both caches report done, then
-redirects to `pc + 4` ([5.6](#56-fencei-end-to-end)).
+redirects to `pc + 4` ([5.6](#56-fencei-end-to-end)). A **branch misprediction** found in EX
+redirects from here to the real next PC, and the branch predictor is **trained** from here.
 
 **Writeback select** chooses the loaded value, the CSR value, or the ALU/link result.
 
@@ -316,7 +338,8 @@ and reporting that value would diverge from every reference model.
 | Any result needed two instructions later | EX | 0 | MEM/WB → EX forward |
 | Value written by WB needed in ID the same cycle | ID | 0 | WB → ID bypass |
 | Load or CSR read followed by its consumer | ID | 1 cycle | `stall_ld_use`: hold ID, bubble into EX |
-| Taken branch or jump | EX | the two younger instructions | `flush_branch` + fetch redirect |
+| Correctly predicted branch or jump | IF | 0 | fetch already followed the prediction |
+| Mispredicted branch or jump | EX, redirected from MEM | the three younger instructions | `flush_trap` + fetch redirect |
 | Trap, `MRET`, `FENCE.I` completion | MEM | everything younger | `flush_trap` + fetch redirect |
 | Data cache miss / `FENCE.I` waiting | MEM | until ready | `stall_mem` |
 | Instruction not yet fetched | IF | absorbed | buffer empty → bubble, no freeze |
@@ -328,8 +351,9 @@ an operand from MEM/WB, and MEM/WB empties on the first stall cycle. The held op
 therefore **re-latch their forwarded values every stall cycle**, capturing whatever was being
 forwarded before its source leaves the pipeline.
 
-**Priority.** An older instruction's decision always wins: trap › `mret` › `FENCE.I` › taken
-branch. A trap in MEM therefore cancels a branch decision being made in EX in the same cycle.
+**Priority.** All redirects are decided in MEM, by the instruction there, in the order
+trap › `mret` › `FENCE.I` › branch misprediction. A branch whose target is misaligned traps
+instead of redirecting.
 
 ### 4.7 Traps and the CSR file
 
@@ -348,6 +372,55 @@ Two implementation points are worth knowing:
 - **`minstret` counts an instruction as it leaves MEM**, the same stage where CSRs are read and
   written. Counting at WB made a counter read one instruction behind and let a counter write
   cancel the wrong increment.
+
+### 4.8 Branch prediction
+
+Without prediction, fetch always continues at `pc + 4`, so every taken branch and every jump
+throws away the instructions fetched behind it. Loops pay that on every iteration. The
+predictor lets fetch follow a taken branch **before the branch is even decoded**.
+
+**Structures** (`branch_predictor.sv`, looked up at the fetch PC):
+
+| Structure | Size | Indexed by | Holds |
+|---|---|---|---|
+| Branch target buffer (BTB) | 64 entries, direct-mapped | `pc[7:2]` | valid, tag `pc[31:8]`, target, and whether the entry is a conditional branch or a jump |
+| Bimodal branch history table (BHT) | 256 × 2-bit counters | `pc[9:2]` | `00` strongly not-taken · `01` weakly not-taken · `10` weakly taken · `11` strongly taken |
+
+**Predicting.** A BTB hit means "the instruction at this PC is a branch or jump we have seen
+taken". A jump is predicted taken; a conditional branch is predicted taken when its counter is
+`10` or `11`. On a predicted-taken hit the fetch unit's next request goes to the BTB target;
+otherwise to `pc + 4`. Counters start at `01`, so an unseen branch is predicted not-taken.
+
+**Checking.** Every instruction — not just branches — carries `pred_next`, the PC fetch went
+to after it. The real next PC is known in EX, and any difference is a misprediction: a wrong
+direction, a wrong target (a `JALR` returning to a different caller), or a stale BTB entry on an
+instruction that is not a branch at all. One rule covers every case, so a prediction can only
+ever cost cycles, never correctness. To keep this off EX's critical path, ID already compares
+`pred_next` with the two candidates that do not depend on registers, `pc + 4` and `pc + imm`;
+EX picks one bit with the branch outcome, and only `JALR` compares a full target in EX.
+
+**Recovering.** A misprediction is recorded in EX/MEM and the redirect fires from MEM, through
+the same flush path as a trap. The three younger instructions are discarded and fetch restarts
+at the real next PC. A correctly predicted branch — taken or not — costs nothing.
+
+**Training.** Once per resolved branch or jump, from MEM: a conditional branch moves its
+counter one step toward the outcome (saturating), and any taken branch or jump writes its target
+into the BTB. A loop branch therefore mispredicts once at loop exit, and stays predicted taken
+when the loop is entered again, because one not-taken outcome only weakens a strongly-taken
+counter.
+
+**Why the redirect and training happen in MEM.** The first version redirected straight from EX,
+saving one cycle per misprediction. Synthesis showed it cost a third of the clock rate: the
+32-bit "next PC ≠ prediction" compare sat behind the forwarding muxes and branch adder, on a
+path into the fetch unit (175 MHz). Redirecting from MEM, keeping the BTB arrays out of
+flip-flops, training from MEM and moving the compares into ID brought the pipeline to
+**264.4 MHz** — faster than it was without prediction (259.0 MHz). The measurements for each step
+are in `results/experiments.md` §7.
+
+| Program (pipeline, ideal memory) | Cycles before → after | IPC | Accuracy |
+|---|---|---|---|
+| `hello.c` (296 instructions) | 484 → **381** (1.27×) | 0.61 → 0.78 | 78% (21 misses in 96) — too short to train |
+| `cachestress.c` (32,091 instructions) | — → **32,700** | 0.98 | **99.4%** (24 misses in 3,930) |
 
 ---
 
@@ -620,7 +693,7 @@ listed in the script, so any new failure is reported as unexpected:
 
 ### 7.4 Unit testbenches
 
-Fifteen self-checking testbenches, each printing `PASS` or failing with a precise message:
+Sixteen self-checking testbenches, each printing `PASS` or failing with a precise message:
 
 | Testbench | What it proves |
 |---|---|
@@ -630,7 +703,8 @@ Fifteen self-checking testbenches, each printing `PASS` or failing with a precis
 | `tb_decoder` | every instruction format, immediate reassembly, illegal encodings, `FENCE.I` |
 | `tb_csr_file` | CSR reads/writes, legality, trap entry/`mret`, counters, stall gating |
 | `tb_magic_mem`, `tb_latency_mem` | the memory models' latency and byte enables |
-| `tb_fetch_unit` | prefetching, back-pressure (random grant refusal), redirects in flight, back-to-back redirects |
+| `tb_fetch_unit` | prefetching, back-pressure (random grant refusal), redirects in flight, back-to-back redirects, following a predicted-taken branch |
+| `tb_branch_predictor` | cold misses, jumps always taken, every 2-bit counter transition including saturation at both ends, target updates, tag aliasing, reset |
 | `tb_sram_1r1w` | read latency, lane-masked writes, the documented collision behaviour |
 | `tb_main_mem` | exact wait-state latency at 0/1/4, line layout, write-once commit |
 | `tb_mem_arbiter` | tie-breaking, no lost or duplicated transfers, no interleaving |
@@ -682,10 +756,8 @@ All numbers come from `results/raw/*.json` and `results/experiments.md`. FPGA fi
 | Design | Fmax | LUTs | Flip-flops | Block RAM | DSP | Share of XCK26 LUTs |
 |---|---|---|---|---|---|---|
 | Single-cycle core | 216.7 MHz | 2,123 | 1,438 | 0 | 0 | 1.8% |
-| Pipeline | 259.0 MHz\* | 2,718 | 2,446 | 0 | 0 | 2.3% |
-| **Pipeline + L1 caches** | **214.4 MHz** | **5,740** | **3,654** | **10** | **0** | **4.9%** |
-
-\* Measured before the cache-interface changes to the core; the cached-system row is current.
+| Pipeline + branch prediction | 264.4 MHz | 4,110 | 3,401 | 0 | 0 | 3.5% |
+| **Pipeline + prediction + L1 caches** | **213.5 MHz** | **6,788** | **4,604** | **10** | **0** | **5.8%** |
 
 The cached system's critical path runs from a data-cache tag RAM, through the tag compare and
 hit logic, to the write enable of a data-cache data RAM — the store-hit path.
@@ -698,16 +770,16 @@ hit logic, to the write enable of a data-cache data RAM — the store-hit path.
 
 Cycles to run `hello.c` (about 297 instructions):
 
-| Wait states | Single-cycle | Pipeline, no cache | Pipeline + caches |
+| Wait states | Single-cycle | Pipeline + prediction, no cache | Pipeline + prediction + caches |
 |---|---|---|---|
-| 0 | 297 | 484 | — |
-| 1 | 595 | 507 | 575 |
-| 4 | 1,489 | 809 | 676 |
-| 10 | 3,277 | 1,439 | **880** |
-| 20 | — | — | 1,220 |
+| 0 | 297 | 381 | — |
+| 1 | 595 | 404 | 471 |
+| 4 | 1,489 | 637 | 575 |
+| 10 | 3,277 | 1,201 | **785** |
+| 20 | — | — | 1,135 |
 
-At 10 wait states the cached system needs **3.7× fewer cycles than the single-cycle core** and
-**1.64× fewer than the uncached pipeline**. With ideal memory (0 wait states) the single-cycle
+At 10 wait states the cached system needs **4.2× fewer cycles than the single-cycle core** and
+**1.53× fewer than the uncached pipeline**. With ideal memory (0 wait states) the single-cycle
 core is fastest in cycles — ideal memory is the one case a pipeline cannot win, which is why
 every comparison here is made under realistic latency.
 
@@ -715,21 +787,24 @@ every comparison here is made under realistic latency.
 
 | | Uncached pipeline | Pipeline + caches |
 |---|---|---|
-| Cycles | 167,919 | 126,479 (**1.33× fewer**) |
-| IPC | 0.191 | 0.254 |
-| I-cache hit rate | — | 99.9% (42,199 / 42,237) |
+| Cycles | 133,588 | 114,830 (**1.16× fewer**) |
+| IPC | 0.240 | 0.279 |
+| I-cache hit rate | — | 99.9% (32,142 / 32,180) |
 | D-cache hit rate | — | 36.5% (2,580 / 7,073), by design of the test |
 
-On `hello.c`, hit rates are 92.9% (instruction) and 82.6% (data).
+On `hello.c`, hit rates are 91.5% (instruction) and 82.6% (data). Branch prediction removed
+the same 11,649 cycles from the cached stress test at every latency — it removes branch
+penalties, not memory stalls (`results/experiments.md` §7).
 
 **Honest caveats.**
 
-- At **1 wait state the caches are slower** on both programs: 575 vs 507 cycles on `hello.c`,
-  and 67,270 vs 51,423 on `cachestress.c`. The cause was not measured; refilling a whole 16-byte
+- At **1 wait state the caches are slower** on both programs: 471 vs 404 cycles on `hello.c`,
+  and 55,621 vs 39,773 on `cachestress.c`. The cause was not measured; refilling a whole 16-byte
   line on every miss is the likely explanation.
-- **Wall-clock time** must also account for the clock: the caches lower Fmax from about 259 to
-  214.4 MHz. On the stress test that leaves roughly a 1.1× real-time gain at 10 wait states, and
-  roughly 1.35× on `hello.c`.
+- **Wall-clock time** must also account for the clock: the caches lower Fmax from 264.4 to
+  213.5 MHz. At 10 wait states that leaves `hello.c` about 1.2× faster in real time, but the stress
+  test about **6% slower** (538 µs vs 505 µs) — its data-cache hit rate is too low to pay for
+  the slower clock. Shortening the data cache's store-hit path is the fix.
 - **No standard benchmark yet.** CoreMark and Dhrystone have not been run, so this design cannot
   yet be ranked against published cores.
 
@@ -739,7 +814,7 @@ On `hello.c`, hit rates are 92.9% (instruction) and 82.6% (data).
 
 | Decision | Why | Cost |
 |---|---|---|
-| **Branches resolve in EX**, no prediction | Resolving in ID needs a comparator and extra forwarding into ID. An ID-stage predictor was built and measured: it cut cycles by about 8% but added a level to the redirect path, and the synthesis results available at the time showed a larger loss in Fmax, so it was reverted (those Fmax figures predate the loop fix — see `results/experiments.md` §3) | Every taken branch squashes two instructions |
+| **Predict in IF (BTB + bimodal), check in EX, redirect and train from MEM** | Fetch follows a taken branch before it is decoded, so correctly predicted branches cost nothing. Redirecting from EX was measured and cost a third of the clock rate; from MEM the pipeline is faster than without prediction. An earlier ID-stage static predictor was reverted (`results/experiments.md` §3) | A misprediction squashes three instructions instead of two; one extra cycle before the predictor learns a branch |
 | **Traps and CSRs at MEM** | Exceptions are precise for free; CSR instructions need no hazard logic because they access the file in order at one stage | CSR reads interlock like loads |
 | **Decoupled fetch with a prefetch buffer** | Lets fetch latency overlap with execution; without it the pipeline lost to the single-cycle core under latency | One extra cycle before decode with ideal memory |
 | **Exception classification in MEM** | Its priority mux and 32-bit `mtval` select were at the end of the longest EX path | None — every input is already registered |
@@ -770,13 +845,15 @@ These were real defects in this design, each invisible to at least one weaker fo
 ## 11. Limitations and roadmap
 
 **Not implemented yet:** multiply/divide (M extension), compressed instructions, interrupts,
-user/supervisor modes, an MMU, PMP enforcement, branch prediction, non-blocking caches. The
+user/supervisor modes, an MMU, PMP enforcement, non-blocking caches. The
 design has been synthesised but not placed, routed or run on the board. `minstret` still counts
 instructions that trap (`ECALL`, `EBREAK`), which the privileged specification excludes.
 
 **Planned next, each building on the current interfaces:**
 
-- **Branch target buffer** in the fetch stage, to stop paying for every taken branch.
+- **2-wide superscalar issue**, building on the predicted fetch stream.
+- **Return-address stack** for `JALR` returns, and a **gshare** predictor on the same BTB.
+- **Shorter data-cache store-hit path**, to recover the clock rate the caches cost.
 - **L2 cache** between the arbiter and main memory (the line port is designed for it).
 - **Non-blocking data cache** with miss-status holding registers.
 - **M extension**, then **custom instructions** in the reserved custom opcode space
@@ -797,6 +874,7 @@ rtl/
   core/     core_rv32i.sv      single-cycle core
             core_rv32i_p5.sv   five-stage pipeline
             fetch_unit.sv      decoupled fetch with prefetch buffer
+            branch_predictor.sv  BTB + bimodal 2-bit counters
   mem/      sram_1r1w.sv       block-RAM template (synthesisable)
             icache.sv          L1 instruction cache
             dcache.sv          L1 data cache
@@ -806,7 +884,7 @@ rtl/
             magic_mem.sv       zero-latency memory            (simulation only)
   soc/      rv32_soc.sv        pipeline + caches + arbiter
 verif/
-  tb/       15 unit/smoke testbenches + trace testbenches (tb_core_rv32i, tb_core_p5,
+  tb/       16 unit/smoke testbenches + trace testbenches (tb_core_rv32i, tb_core_p5,
             tb_core_rv32i_lat, tb_core_p5_lat, tb_soc)
   prog/     crt0.S  link.ld  hello.c  cachestress.c  smoke.S
 scripts/    compare_trace.py (+ tests)  run_regress.py  synth.tcl  collect_results.py
