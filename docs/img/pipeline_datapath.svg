@@ -1,218 +1,365 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 940" width="1600" height="940" role="img" aria-label="Pipelined datapath and control in textbook notation">
-<title>Pipelined datapath and control in textbook notation</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1330 1060" width="1330" height="1060" role="img" aria-label="Pipelined processor with branch prediction and full hazard handling">
+<title>Pipelined processor with branch prediction and full hazard handling</title>
 <defs><marker id="ah0" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f172a"/></marker><marker id="as0" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f172a"/></marker><marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker><marker id="as1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ea580c"/></marker><marker id="as2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ea580c"/></marker><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#dc2626"/></marker><marker id="as3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#dc2626"/></marker><marker id="ah4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0d9488"/></marker><marker id="as4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0d9488"/></marker><marker id="ah5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9333ea"/></marker><marker id="as5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9333ea"/></marker><marker id="ah6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0284c7"/></marker><marker id="as6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0284c7"/></marker><marker id="ah7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#16a34a"/></marker><marker id="as7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#16a34a"/></marker><marker id="ah8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e11d48"/></marker><marker id="as8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e11d48"/></marker><marker id="ah9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ca8a04"/></marker><marker id="as9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ca8a04"/></marker><marker id="ah10" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4f46e5"/></marker><marker id="as10" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4f46e5"/></marker><marker id="ah11" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/></marker><marker id="as11" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/></marker><marker id="ah12" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1d72b8"/></marker><marker id="as12" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1d72b8"/></marker></defs>
-<rect width="1600" height="940" rx="14" fill="#ffffff"/>
-<text x="30" y="38" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="20" text-anchor="start" font-weight="700" fill="#0f172a">core_rv32i_p5 — pipelined datapath and control</text>
-<text x="30" y="60" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12.5" text-anchor="start" font-weight="normal" fill="#475569">Textbook notation (Patterson &amp; Hennessy): black = datapath, blue = control. Branches are predicted in IF, checked in EX, redirected and trained from MEM.</text>
-<text x="175.0" y="92" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="700" fill="#0284c7">IF</text>
-<text x="500.0" y="92" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="700" fill="#7c3aed">ID</text>
-<text x="855.0" y="92" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="700" fill="#d97706">EX</text>
-<text x="1185.0" y="92" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="700" fill="#16a34a">MEM</text>
-<text x="1460.0" y="92" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="700" fill="#e11d48">WB</text>
-<rect x="330" y="190" width="30" height="610" rx="3" fill="#f1f5f9" fill-opacity="1" stroke="#0f172a" stroke-width="1.6"/>
-<text x="345" y="182" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11.5" text-anchor="middle" font-weight="700" fill="#0f172a">IF/ID</text>
-<rect x="640" y="190" width="30" height="610" rx="3" fill="#f1f5f9" fill-opacity="1" stroke="#0f172a" stroke-width="1.6"/>
-<text x="655" y="182" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11.5" text-anchor="middle" font-weight="700" fill="#0f172a">ID/EX</text>
-<rect x="642" y="194" width="26" height="20" rx="2" fill="#eaf3fb" fill-opacity="1" stroke="#1d72b8" stroke-width="1.2"/>
-<text x="655" y="208" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="700" fill="#1d72b8">WB</text>
-<rect x="642" y="218" width="26" height="20" rx="2" fill="#eaf3fb" fill-opacity="1" stroke="#1d72b8" stroke-width="1.2"/>
-<text x="655" y="232" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="700" fill="#1d72b8">M</text>
-<rect x="642" y="242" width="26" height="20" rx="2" fill="#eaf3fb" fill-opacity="1" stroke="#1d72b8" stroke-width="1.2"/>
-<text x="655" y="256" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="700" fill="#1d72b8">EX</text>
-<rect x="1040" y="190" width="30" height="610" rx="3" fill="#f1f5f9" fill-opacity="1" stroke="#0f172a" stroke-width="1.6"/>
-<text x="1055" y="182" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11.5" text-anchor="middle" font-weight="700" fill="#0f172a">EX/MEM</text>
-<rect x="1042" y="194" width="26" height="20" rx="2" fill="#eaf3fb" fill-opacity="1" stroke="#1d72b8" stroke-width="1.2"/>
-<text x="1055" y="208" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="700" fill="#1d72b8">WB</text>
-<rect x="1042" y="218" width="26" height="20" rx="2" fill="#eaf3fb" fill-opacity="1" stroke="#1d72b8" stroke-width="1.2"/>
-<text x="1055" y="232" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="700" fill="#1d72b8">M</text>
-<rect x="1300" y="190" width="30" height="610" rx="3" fill="#f1f5f9" fill-opacity="1" stroke="#0f172a" stroke-width="1.6"/>
-<text x="1315" y="182" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11.5" text-anchor="middle" font-weight="700" fill="#0f172a">MEM/WB</text>
-<rect x="1302" y="194" width="26" height="20" rx="2" fill="#eaf3fb" fill-opacity="1" stroke="#1d72b8" stroke-width="1.2"/>
-<text x="1315" y="208" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="700" fill="#1d72b8">WB</text>
-<text x="345" y="815" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">fetch buffer</text>
-<rect x="36" y="420" width="24" height="110" rx="12.0" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.5"/>
-<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="600" fill="#0f172a"><tspan x="48.0" y="463.8">M</tspan><tspan x="48.0" y="476.0">u</tspan><tspan x="48.0" y="488.2">x</tspan></text>
-<rect x="84" y="450" width="40" height="50" rx="4" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.5"/>
-<text x="104.0" y="479.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="600" fill="#0f172a">PC</text>
-<polyline points="60,475 82,475" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<rect x="150" y="420" width="140" height="110" rx="4" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.5"/>
-<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" text-anchor="middle" font-weight="600" fill="#0f172a"><tspan x="220.0" y="464.9">Instruction</tspan><tspan x="220.0" y="479.0">memory</tspan><tspan x="220.0" y="493.1">(L1 I-cache)</tspan></text>
-<polyline points="124,475 148,475" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="290,475 328,475" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<rect x="289.22" y="453.88" width="31.56" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="305" y="465" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">insn</text>
-<polygon points="170,250 216,269.6 216,300.4 170,320 170,293.4 180.12,285.0 170,276.6" fill="#ffffff" stroke="#0f172a" stroke-width="1.5"/>
-<text x="197.6" y="289.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" text-anchor="middle" font-weight="600" fill="#0f172a">Add</text>
-<polyline points="132,475 132,300 168,300" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<circle cx="132" cy="475" r="3" fill="#0f172a"/>
-<text x="150" y="268" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" text-anchor="middle" font-weight="700" fill="#0f172a">4</text>
-<polyline points="156,272 168,272" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="216,285 236,285 236,232 22,232 22,440 34,440" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<rect x="98.33" y="220.88" width="43.339999999999996" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="120" y="232" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">pc + 4</text>
-<rect x="150" y="330" width="140" height="64" rx="8" fill="#eaf3fb" fill-opacity="1" stroke="#1d72b8" stroke-width="1.6"/>
-<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="600" fill="#1d72b8"><tspan x="220.0" y="359.3">BTB (64)</tspan><tspan x="220.0" y="372.7">+ bimodal BHT (256)</tspan></text>
-<polyline points="132,362 148,362" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="150,380 14,380 14,470 34,470" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<rect x="28.880000000000003" y="368.88" width="102.24" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="80" y="380" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">predicted target</text>
-<polyline points="290,345 306,345 306,160 48,160 48,418" fill="none" stroke="#1d72b8" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="5 3" marker-end="url(#ah12)"/>
-<rect x="133.715" y="148.88" width="84.57" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="176" y="160" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#1d72b8">predict taken</text>
-<polyline points="140,500 140,560 328,560" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<circle cx="140" cy="475" r="3" fill="#0f172a"/>
-<rect x="197.715" y="548.88" width="84.57" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="240" y="560" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">pc, pred_next</text>
-<rect x="388" y="126" width="170" height="46" rx="10" fill="#eaf3fb" fill-opacity="1" stroke="#1d72b8" stroke-width="1.6"/>
-<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="600" fill="#1d72b8"><tspan x="473.0" y="146.3">Hazard</tspan><tspan x="473.0" y="159.7">detection unit</tspan></text>
-<rect x="440" y="205" width="120" height="66" rx="33.0" fill="#eaf3fb" fill-opacity="1" stroke="#1d72b8" stroke-width="1.6"/>
-<text x="500.0" y="242.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="600" fill="#1d72b8">Control</text>
-<rect x="596" y="205" width="22" height="64" rx="11.0" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.5"/>
-<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="600" fill="#0f172a"><tspan x="607.0" y="225.8">M</tspan><tspan x="607.0" y="238.0">u</tspan><tspan x="607.0" y="250.2">x</tspan></text>
-<text x="588" y="214" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" text-anchor="middle" font-weight="700" fill="#0f172a">0</text>
-<polyline points="560,238 594,238" fill="none" stroke="#1d72b8" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah12)"/>
-<polyline points="618,237 642,237" fill="none" stroke="#1d72b8" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah12)"/>
-<rect x="410" y="380" width="160" height="180" rx="4" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.5"/>
-<text x="490" y="400" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12.5" text-anchor="middle" font-weight="700" fill="#0f172a">Registers</text>
-<text x="416" y="430" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="start" font-weight="normal" fill="#475569">Read reg 1</text>
-<text x="416" y="470" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="start" font-weight="normal" fill="#475569">Read reg 2</text>
-<text x="416" y="510" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="start" font-weight="normal" fill="#475569">Write reg</text>
-<text x="416" y="545" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="start" font-weight="normal" fill="#475569">Write data</text>
-<text x="564" y="430" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="end" font-weight="normal" fill="#475569">Read data 1</text>
-<text x="564" y="500" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="end" font-weight="normal" fill="#475569">Read data 2</text>
-<ellipse cx="490" cy="640" rx="46" ry="28" fill="#ffffff" stroke="#0f172a" stroke-width="1.5"/>
-<text x="490" y="644" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" text-anchor="middle" font-weight="600" fill="#0f172a">Imm Gen</text>
-<polyline points="360,475 380,475 380,238 438,238" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<rect x="371.26" y="289.36" width="41.48" height="15.52" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="392" y="300" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9" text-anchor="middle" font-weight="normal" fill="#475569">opcode</text>
-<polyline points="380,426 408,426" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="380,466 408,466" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="380,466 380,640 442,640" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<circle cx="380" cy="426" r="3" fill="#0f172a"/>
-<circle cx="380" cy="466" r="3" fill="#0f172a"/>
-<circle cx="380" cy="475" r="3" fill="#0f172a"/>
-<rect x="368.68" y="441.36" width="52.64" height="15.52" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="395" y="452" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9" text-anchor="middle" font-weight="normal" fill="#475569">rs1  rs2</text>
-<polyline points="380,640 380,700 638,700" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<rect x="510.11" y="688.88" width="19.78" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="520" y="700" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">rd</text>
-<polyline points="570,430 638,430" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="570,500 638,500" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="536,640 638,640" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<rect x="587.165" y="616.88" width="25.669999999999998" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="600" y="628" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">imm</text>
-<polyline points="360,560 638,560" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="473,172 473,186 607,186 607,203" fill="none" stroke="#1d72b8" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="5 3" marker-end="url(#ah12)"/>
-<polyline points="388,149 318,149 318,212 328,212" fill="none" stroke="#1d72b8" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="5 3" marker-end="url(#ah12)"/>
-<rect x="334.05" y="130.36" width="35.9" height="15.52" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="352" y="141" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9" text-anchor="middle" font-weight="normal" fill="#1d72b8">stall</text>
-<polyline points="640,300 628,300 628,160 560,160" fill="none" stroke="#1d72b8" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="5 3" marker-end="url(#ah12)"/>
-<rect x="558.52" y="289.36" width="74.96" height="15.52" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="596" y="300" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9" text-anchor="middle" font-weight="normal" fill="#1d72b8">MemRead · rd</text>
-<rect x="696" y="395" width="24" height="70" rx="12.0" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.5"/>
-<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="600" fill="#0f172a"><tspan x="708.0" y="418.8">M</tspan><tspan x="708.0" y="431.0">u</tspan><tspan x="708.0" y="443.2">x</tspan></text>
-<rect x="696" y="480" width="24" height="70" rx="12.0" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.5"/>
-<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="600" fill="#0f172a"><tspan x="708.0" y="503.8">M</tspan><tspan x="708.0" y="516.0">u</tspan><tspan x="708.0" y="528.2">x</tspan></text>
-<polyline points="670,430 694,430" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="670,500 694,500" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<rect x="770" y="488" width="24" height="70" rx="12.0" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.5"/>
-<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="600" fill="#0f172a"><tspan x="782.0" y="511.8">M</tspan><tspan x="782.0" y="524.0">u</tspan><tspan x="782.0" y="536.2">x</tspan></text>
-<polyline points="720,515 768,515" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="670,640 750,640 750,540 768,540" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polygon points="826,388 900,420 900,520 826,552 826,494 842,470 826,446" fill="#ffffff" stroke="#0f172a" stroke-width="1.6"/>
-<text x="872" y="474" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" text-anchor="middle" font-weight="700" fill="#0f172a">ALU</text>
-<polyline points="720,430 824,430" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="794,523 824,523" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="900,470 1038,470" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<rect x="956.55" y="448.88" width="66.9" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="990" y="460" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">ALU result</text>
-<polyline points="708,550 708,590 1038,590" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<circle cx="708" cy="560" r="3" fill="#0f172a"/>
-<rect x="956.55" y="568.88" width="66.9" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="990" y="580" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">store data</text>
-<polyline points="670,700 1038,700" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polygon points="760,260 806,279.6 806,310.4 760,330 760,303.4 770.12,295.0 760,286.6" fill="#ffffff" stroke="#0f172a" stroke-width="1.5"/>
-<text x="787.6" y="299.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" text-anchor="middle" font-weight="600" fill="#0f172a">Add</text>
-<polyline points="670,560 680,560 680,312 758,312" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="750,640 750,286 758,286" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<circle cx="750" cy="640" r="3" fill="#0f172a"/>
-<rect x="880" y="330" width="104" height="42" rx="4" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.5"/>
-<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="600" fill="#0f172a"><tspan x="932.0" y="348.3">Branch</tspan><tspan x="932.0" y="361.7">compare</tspan></text>
-<polyline points="724,420 724,351 878,351" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<circle cx="724" cy="430" r="3" fill="#0f172a"/>
-<rect x="880" y="230" width="150" height="64" rx="8" fill="#eaf3fb" fill-opacity="1" stroke="#1d72b8" stroke-width="1.6"/>
-<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="600" fill="#1d72b8"><tspan x="955.0" y="259.3">mispredict?</tspan><tspan x="955.0" y="272.7">next PC ≠ pred_next</tspan></text>
-<polyline points="806,295 870,295 870,262 878,262" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="932,330 932,296" fill="none" stroke="#1d72b8" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="5 3" marker-end="url(#ah12)"/>
-<polyline points="686,560 686,214 960,214 960,228" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<circle cx="686" cy="560" r="3" fill="#0f172a"/>
-<rect x="748.57" y="203.36" width="102.86" height="15.52" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="800" y="214" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9" text-anchor="middle" font-weight="normal" fill="#475569">pc + 4, pred_next</text>
-<polyline points="670,250 862,250 862,402" fill="none" stroke="#1d72b8" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="5 3" marker-end="url(#ah12)"/>
-<rect x="742.05" y="239.36" width="35.9" height="15.52" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="760" y="250" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9" text-anchor="middle" font-weight="normal" fill="#1d72b8">ALUOp</text>
-<rect x="740" y="744" width="180" height="46" rx="10" fill="#eaf3fb" fill-opacity="1" stroke="#1d72b8" stroke-width="1.6"/>
-<text x="830.0" y="771.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" text-anchor="middle" font-weight="600" fill="#1d72b8">Forwarding unit</text>
-<polyline points="740,767 708,767 708,552" fill="none" stroke="#1d72b8" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="5 3" marker-end="url(#ah12)"/>
-<polyline points="800,744 800,474 708,474 708,467" fill="none" stroke="#1d72b8" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="5 3" marker-end="url(#ah12)"/>
-<polyline points="1064,470 1064,830 684,830 684,452 694,452" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<rect x="810.045" y="818.88" width="119.91" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="870" y="830" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">EX/MEM → EX forward</text>
-<polyline points="684,520 694,520" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<rect x="1090" y="420" width="150" height="140" rx="4" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.5"/>
-<text x="1165" y="444" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11.5" text-anchor="middle" font-weight="700" fill="#0f172a">Data memory</text>
-<text x="1165" y="506" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="normal" fill="#475569">(L1 D-cache)</text>
-<text x="1096" y="474" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="start" font-weight="normal" fill="#475569">Address</text>
-<text x="1096" y="534" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="start" font-weight="normal" fill="#475569">Write data</text>
-<text x="1234" y="474" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="end" font-weight="normal" fill="#475569">Read data</text>
-<polyline points="1070,470 1088,470" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="1070,590 1080,590 1080,530 1088,530" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="1240,470 1298,470" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="1064,470 1064,380 1298,380" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<circle cx="1064" cy="470" r="3" fill="#0f172a"/>
-<rect x="1055.935" y="368.88" width="108.13" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="1110" y="380" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">ALU result / link</text>
-<rect x="1100" y="610" width="130" height="60" rx="8" fill="#eaf3fb" fill-opacity="1" stroke="#1d72b8" stroke-width="1.6"/>
-<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="600" fill="#1d72b8"><tspan x="1165.0" y="637.3">CSRs +</tspan><tspan x="1165.0" y="650.7">trap unit</tspan></text>
-<polyline points="1070,640 1098,640" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="1230,640 1298,640" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="1070,700 1298,700" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="1070,216 1165,216 1165,418" fill="none" stroke="#1d72b8" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="5 3" marker-end="url(#ah12)"/>
-<rect x="1065.78" y="194.36" width="108.44" height="15.52" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="1120" y="205" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9" text-anchor="middle" font-weight="normal" fill="#1d72b8">MemRead / MemWrite</text>
-<rect x="1360" y="400" width="24" height="260" rx="12.0" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.5"/>
-<text font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="600" fill="#0f172a"><tspan x="1372.0" y="518.8">M</tspan><tspan x="1372.0" y="531.0">u</tspan><tspan x="1372.0" y="543.2">x</tspan></text>
-<polyline points="1330,470 1358,470" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="1330,380 1340,380 1340,420 1358,420" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="1330,640 1358,640" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<polyline points="1330,194 1372,194 1372,398" fill="none" stroke="#1d72b8" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="5 3" marker-end="url(#ah12)"/>
-<rect x="1372.99" y="183.36" width="114.02" height="15.52" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="1430" y="194" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9" text-anchor="middle" font-weight="normal" fill="#1d72b8">MemtoReg / RegWrite</text>
-<polyline points="1384,530 1420,530 1420,870 396,870 396,545 408,545" fill="none" stroke="#e11d48" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah8)"/>
-<rect x="866.55" y="858.88" width="66.9" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="900" y="870" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#e11d48">write data</text>
-<polyline points="1330,700 1440,700 1440,886 388,886 388,510 408,510" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<rect x="840.045" y="874.88" width="119.91" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="900" y="886" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">write register (rd)</text>
-<polyline points="1420,850 676,850 676,535 694,535" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="6 3" marker-end="url(#ah0)"/>
-<polyline points="676,462 694,462" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="6 3" marker-end="url(#ah0)"/>
-<rect x="1030.045" y="838.88" width="119.91" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="1090" y="850" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#475569">MEM/WB → EX forward</text>
-<circle cx="1420" cy="850" r="3" fill="#0f172a"/>
-<polyline points="1030,262 1038,262" fill="none" stroke="#1d72b8" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="5 3" marker-end="url(#ah12)"/>
-<polyline points="1072,262 1082,262 1082,104 10,104 10,505 34,505" fill="none" stroke="#1d72b8" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#ah12)"/>
-<polyline points="1230,625 1260,625 1260,104 1082,104" fill="none" stroke="#1d72b8" stroke-width="1.8" stroke-linejoin="round"/>
-<rect x="392.665" y="92.88" width="614.67" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="700" y="104" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#1d72b8">redirect from MEM: misprediction found in EX, or trap / mret / FENCE.I  ·  flushes younger instructions</text>
-<polyline points="1092,300 1092,116 270,116 270,328" fill="none" stroke="#1d72b8" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="5 3" marker-end="url(#ah12)"/>
-<rect x="569.365" y="104.88" width="261.27" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
-<text x="700" y="116" font-family="Consolas, Menlo, DejaVu Sans Mono, monospace" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#1d72b8">train BTB / BHT from MEM: pc, taken, target</text>
-<text x="1460" y="280" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11.5" text-anchor="start" font-weight="700" fill="#0f172a">Notation</text>
-<polyline points="1460,300 1494,300" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah0)"/>
-<text x="1500" y="304" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="start" font-weight="normal" fill="#475569">datapath</text>
-<polyline points="1460,322 1494,322" fill="none" stroke="#1d72b8" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="5 3" marker-end="url(#ah12)"/>
-<text x="1500" y="326" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="start" font-weight="normal" fill="#475569">control</text>
-<polyline points="1460,344 1494,344" fill="none" stroke="#e11d48" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah8)"/>
-<text x="1500" y="348" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="start" font-weight="normal" fill="#475569">writeback</text>
-<text x="30" y="920" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="start" font-weight="normal" fill="#475569">Simplified like the textbook figure: the fetch unit's 4-entry buffer is drawn as IF/ID, and the WB→ID register bypass, the early D-cache address and the separate address adder are omitted (see pipeline.svg for those).</text>
+<rect width="1330" height="1060" rx="14" fill="#ffffff"/>
+<text x="30" y="36" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="19" text-anchor="start" font-weight="700" fill="#0f172a">Pipelined RV32I processor with branch prediction and full hazard handling</text>
+<text x="30" y="58" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#475569">Drawn in the convention of Harris &amp; Harris, Digital Design and Computer Architecture: RISC-V Edition, Figure 7.61. Black = datapath, blue = control. Signal suffix = stage (F D E M W).</text>
+<text x="158.0" y="88" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" text-anchor="middle" font-weight="700" fill="#0284c7">Fetch</text>
+<text x="440.0" y="88" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" text-anchor="middle" font-weight="700" fill="#7c3aed">Decode</text>
+<text x="728.0" y="88" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" text-anchor="middle" font-weight="700" fill="#d97706">Execute</text>
+<text x="1001.0" y="88" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" text-anchor="middle" font-weight="700" fill="#16a34a">Memory</text>
+<text x="1215.0" y="88" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" text-anchor="middle" font-weight="700" fill="#e11d48">Writeback</text>
+<rect x="280" y="150" width="16" height="670" rx="1" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.5"/>
+<polygon points="283,150 293,150 288,159" fill="none" stroke="#0f172a" stroke-width="1.2"/>
+<text x="288" y="144" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="middle" font-weight="normal" fill="#0f172a">CLK</text>
+<text x="288" y="786" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">EN</text>
+<text x="288" y="800" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">CLR</text>
+<text x="288" y="834" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="700" fill="#475569">IF/ID</text>
+<rect x="568" y="150" width="16" height="670" rx="1" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.5"/>
+<polygon points="571,150 581,150 576,159" fill="none" stroke="#0f172a" stroke-width="1.2"/>
+<text x="576" y="144" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="middle" font-weight="normal" fill="#0f172a">CLK</text>
+<text x="576" y="786" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">CLR</text>
+<text x="576" y="834" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="700" fill="#475569">ID/EX</text>
+<rect x="856" y="150" width="16" height="670" rx="1" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.5"/>
+<polygon points="859,150 869,150 864,159" fill="none" stroke="#0f172a" stroke-width="1.2"/>
+<text x="864" y="144" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="middle" font-weight="normal" fill="#0f172a">CLK</text>
+<text x="864" y="786" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">CLR</text>
+<text x="864" y="834" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="700" fill="#475569">EX/MEM</text>
+<rect x="1114" y="150" width="16" height="670" rx="1" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.5"/>
+<polygon points="1117,150 1127,150 1122,159" fill="none" stroke="#0f172a" stroke-width="1.2"/>
+<text x="1122" y="144" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="middle" font-weight="normal" fill="#0f172a">CLK</text>
+<text x="1122" y="834" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="700" fill="#475569">MEM/WB</text>
+<rect x="26" y="368" width="20" height="96" rx="10.0" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.3"/>
+<text x="36.0" y="387.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">00</text>
+<text x="36.0" y="419.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">01</text>
+<text x="36.0" y="451.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">10</text>
+<rect x="70" y="380" width="16" height="72" rx="1" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.5"/>
+<polygon points="73,380 83,380 78,389" fill="none" stroke="#0f172a" stroke-width="1.2"/>
+<text x="78" y="374" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="middle" font-weight="normal" fill="#0f172a">CLK</text>
+<text x="78" y="446" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">EN</text>
+<polyline points="46,416 70,416" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="48" y="410" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">PCF'</text>
+<rect x="116" y="370" width="112" height="96" rx="2" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.4"/>
+<text x="172.0" y="422.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="700" fill="#0f172a"></text>
+<text x="172" y="430" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="700" fill="#0f172a">Instruction</text>
+<text x="172" y="444" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="700" fill="#0f172a">Memory</text>
+<text x="122" y="400" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" text-anchor="start" font-weight="normal" fill="#0f172a">A</text>
+<text x="222" y="400" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" text-anchor="end" font-weight="normal" fill="#0f172a">RD</text>
+<text x="172" y="456" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="middle" font-weight="normal" fill="#475569">(L1 I-cache)</text>
+<polyline points="86,396 116,396" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="90" y="390" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="start" font-weight="normal" fill="#0f172a">PCF</text>
+<polyline points="228,396 280,396" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="244" y="390" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">InstrF</text>
+<circle cx="100" cy="396" r="2.6" fill="#0f172a"/>
+<polyline points="100,396 100,548 150,548" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<polygon points="150,532 190,551.2 190,576.8 150,596 150,571.68 160.0,564.0 150,556.32" fill="#ffffff" stroke="#0f172a" stroke-width="1.4"/>
+<text x="174.8" y="569.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="700" fill="#0f172a">+</text>
+<text x="132" y="590" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="700" fill="#0f172a">4</text>
+<polyline points="140,586 150,586" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="190,564 264,564 264,600 280,600" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="196" y="558" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">PCPlus4F</text>
+<circle cx="264" cy="564" r="2.6" fill="#0f172a"/>
+<polyline points="264,564 264,520 12,520 12,380 26,380" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="100,548 100,640" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<circle cx="100" cy="548" r="2.6" fill="#0f172a"/>
+<polyline points="100,640 280,640" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="206" y="634" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">PCF</text>
+<rect x="116" y="680" width="128" height="80" rx="2" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.4"/>
+<text x="180.0" y="724.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="700" fill="#0f172a"></text>
+<text x="180" y="708" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="700" fill="#0f172a">Branch Predictor</text>
+<text x="180" y="724" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="middle" font-weight="normal" fill="#475569">BTB (64) + BHT (256)</text>
+<text x="122" y="744" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" text-anchor="start" font-weight="normal" fill="#0f172a">A</text>
+<circle cx="100" cy="640" r="2.6" fill="#0f172a"/>
+<polyline points="100,640 100,744 116,744" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="238" y="744" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="end" font-weight="normal" fill="#0f172a">Target</text>
+<polyline points="244,744 262,744 262,790 8,790 8,416 26,416" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="150" y="784" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">PredTargetF</text>
+<text x="238" y="700" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="end" font-weight="normal" fill="#1d72b8">Taken</text>
+<polyline points="244,696 252,696 252,352 40,352 40,368" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="160" y="346" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#1d72b8">PredTakenF</text>
+<polyline points="270,664 280,664" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="200" y="676" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">PredNextF</text>
+<line x1="246" y1="664" x2="270" y2="664" stroke="#0f172a" stroke-width="1.4"/>
+<text x="212" y="660" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="1" text-anchor="start" font-weight="normal" fill="#0f172a"></text>
+<polyline points="296,396 320,396" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="298" y="390" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="start" font-weight="normal" fill="#0f172a">InstrD</text>
+<polyline points="320,210 320,720" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<rect x="372" y="170" width="104" height="132" rx="2" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.4"/>
+<text x="424.0" y="240.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="700" fill="#0f172a"></text>
+<text x="424" y="186" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="700" fill="#1d72b8">Control</text>
+<text x="424" y="200" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="700" fill="#1d72b8">Unit</text>
+<rect x="372" y="170" width="104" height="132" rx="2" fill="none" fill-opacity="1" stroke="#1d72b8" stroke-width="1.4"/>
+<circle cx="320" cy="226" r="2.6" fill="#0f172a"/>
+<polyline points="320,226 372,226" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="324" y="222" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="start" font-weight="normal" fill="#0f172a">6:0</text>
+<text x="378" y="230" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="start" font-weight="normal" fill="#0f172a">op</text>
+<circle cx="320" cy="250" r="2.6" fill="#0f172a"/>
+<polyline points="320,250 372,250" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="324" y="246" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="start" font-weight="normal" fill="#0f172a">14:12</text>
+<text x="378" y="254" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="start" font-weight="normal" fill="#0f172a">funct3</text>
+<circle cx="320" cy="274" r="2.6" fill="#0f172a"/>
+<polyline points="320,274 372,274" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="324" y="270" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="start" font-weight="normal" fill="#0f172a">30</text>
+<text x="378" y="278" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="start" font-weight="normal" fill="#0f172a">funct7₅</text>
+<polyline points="476,178 568,178" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="482" y="175" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">RegWriteD</text>
+<polyline points="476,194 568,194" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="482" y="191" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">ResultSrcD</text>
+<polyline points="476,210 568,210" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="482" y="207" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">MemWriteD</text>
+<polyline points="476,226 568,226" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="482" y="223" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">JumpD</text>
+<polyline points="476,242 568,242" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="482" y="239" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">BranchD</text>
+<polyline points="476,258 568,258" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="482" y="255" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">ALUControlD</text>
+<polyline points="476,274 568,274" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="482" y="271" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">ALUSrcD</text>
+<text x="482" y="294" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">ImmSrcD</text>
+<polyline points="476,298 540,298 540,668" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<rect x="372" y="330" width="128" height="132" rx="2" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.4"/>
+<text x="436.0" y="400.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="700" fill="#0f172a"></text>
+<text x="450" y="436" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="700" fill="#0f172a">Register</text>
+<text x="450" y="450" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="700" fill="#0f172a">File</text>
+<circle cx="320" cy="350" r="2.6" fill="#0f172a"/>
+<polyline points="320,350 372,350" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="324" y="346" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="start" font-weight="normal" fill="#0f172a">19:15</text>
+<text x="378" y="354" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="start" font-weight="normal" fill="#0f172a">A1</text>
+<circle cx="320" cy="380" r="2.6" fill="#0f172a"/>
+<polyline points="320,380 372,380" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="324" y="376" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="start" font-weight="normal" fill="#0f172a">24:20</text>
+<text x="378" y="384" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="start" font-weight="normal" fill="#0f172a">A2</text>
+<text x="378" y="414" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="start" font-weight="normal" fill="#0f172a">A3</text>
+<text x="378" y="444" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="start" font-weight="normal" fill="#0f172a">WD3</text>
+<text x="436" y="344" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">WE3</text>
+<text x="494" y="354" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="end" font-weight="normal" fill="#0f172a">RD1</text>
+<text x="494" y="394" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="end" font-weight="normal" fill="#0f172a">RD2</text>
+<polyline points="500,350 568,350" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="500,390 568,390" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<circle cx="320" cy="560" r="2.6" fill="#0f172a"/>
+<polyline points="320,560 568,560" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="324" y="556" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="start" font-weight="normal" fill="#0f172a">19:15</text>
+<text x="500" y="556" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">Rs1D</text>
+<circle cx="320" cy="580" r="2.6" fill="#0f172a"/>
+<polyline points="320,580 568,580" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="324" y="576" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="start" font-weight="normal" fill="#0f172a">24:20</text>
+<text x="500" y="576" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">Rs2D</text>
+<circle cx="320" cy="600" r="2.6" fill="#0f172a"/>
+<polyline points="320,600 568,600" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="324" y="596" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="start" font-weight="normal" fill="#0f172a">11:7</text>
+<text x="500" y="596" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">RdD</text>
+<polygon points="372,700 500,686 500,724 372,724" fill="#ffffff" stroke="#0f172a" stroke-width="1.4"/>
+<text x="440" y="714" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="700" fill="#0f172a">Extend</text>
+<circle cx="320" cy="712" r="2.6" fill="#0f172a"/>
+<polyline points="320,712 372,712" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="324" y="708" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="start" font-weight="normal" fill="#0f172a">31:7</text>
+<polyline points="500,706 568,706" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="506" y="700" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">ImmExtD</text>
+<polyline points="296,640 568,640" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="500" y="634" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">PCD</text>
+<polyline points="296,600 306,600 306,760 568,760" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="500" y="754" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">PCPlus4D</text>
+<polyline points="296,664 310,664 310,780 568,780" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="500" y="774" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">PredNextD</text>
+<polyline points="584,178 600,178" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="588" y="175" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">RegWriteE</text>
+<polyline points="584,194 600,194" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="588" y="191" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">ResultSrcE</text>
+<polyline points="584,210 600,210" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="588" y="207" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">MemWriteE</text>
+<polyline points="584,226 600,226" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="588" y="223" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">JumpE</text>
+<polyline points="584,242 600,242" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="588" y="239" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">BranchE</text>
+<polyline points="584,258 600,258" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="588" y="255" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">ALUControlE</text>
+<polyline points="584,274 600,274" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="588" y="271" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">ALUSrcE</text>
+<polyline points="600,178 856,178" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="600,194 856,194" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="600,210 856,210" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="584,350 610,350" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="585" y="344" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="start" font-weight="normal" fill="#0f172a">RD1E</text>
+<polyline points="584,390 600,390 600,432 610,432" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="585" y="384" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="start" font-weight="normal" fill="#0f172a">RD2E</text>
+<rect x="610" y="330" width="20" height="70" rx="10.0" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.3"/>
+<text x="620.0" y="344.6666666666667" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">00</text>
+<text x="620.0" y="368.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">01</text>
+<text x="620.0" y="391.3333333333333" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">10</text>
+<rect x="610" y="412" width="20" height="70" rx="10.0" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.3"/>
+<text x="620.0" y="426.6666666666667" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">00</text>
+<text x="620.0" y="450.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">01</text>
+<text x="620.0" y="473.3333333333333" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">10</text>
+<polyline points="630,365 690,365" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="640" y="359" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">SrcAE</text>
+<polyline points="630,447 650,447" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<circle cx="650" cy="447" r="2.6" fill="#0f172a"/>
+<polyline points="650,447 668,447" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="632" y="462" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#0f172a">WriteDataE</text>
+<rect x="668" y="436" width="20" height="46" rx="10.0" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.3"/>
+<text x="678.0" y="450.5" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">0</text>
+<text x="678.0" y="473.5" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">1</text>
+<polyline points="584,706 656,706 656,470 668,470" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="588" y="700" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">ImmExtE</text>
+<polyline points="688,459 700,459 700,420 712,420" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="690" y="476" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">SrcBE</text>
+<polygon points="712,330 768,354 768,438 712,462 712,410 726,396 712,382" fill="#ffffff" stroke="#0f172a" stroke-width="1.6"/>
+<text x="748" y="400" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="700" fill="#0f172a">ALU</text>
+<polyline points="690,365 700,365 700,350 712,350" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="768,396 856,396" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="782" y="390" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">ALUResultE</text>
+<polyline points="600,274 740,274 740,340" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="600,290 678,290 678,436" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="650,447 650,490 856,490" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="782" y="484" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">WriteDataE</text>
+<polyline points="584,640 632,640 632,580 752,580" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="588" y="634" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">PCE</text>
+<circle cx="632" cy="640" r="2.6" fill="#0f172a"/>
+<polyline points="656,706 656,620 752,620" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<circle cx="656" cy="706" r="2.6" fill="#0f172a"/>
+<polygon points="752,566 792,586.4 792,613.6 752,634 752,608.16 762.0,600.0 752,591.84" fill="#ffffff" stroke="#0f172a" stroke-width="1.4"/>
+<text x="776.8" y="605.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="700" fill="#0f172a">+</text>
+<polyline points="792,600 806,600" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="758" y="562" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#0f172a">PCTargetE</text>
+<polyline points="584,760 700,760 700,650 806,650" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="588" y="754" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">PCPlus4E</text>
+<rect x="806" y="586" width="20" height="80" rx="10.0" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.3"/>
+<text x="816.0" y="609.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">1</text>
+<text x="816.0" y="649.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">0</text>
+<text x="808" y="580" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">TakenE</text>
+<polyline points="826,626 838,626" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<circle cx="838" cy="626" r="2.6" fill="#0f172a"/>
+<polyline points="838,626 856,626" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="830" y="620" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="1" text-anchor="start" font-weight="normal" fill="#0f172a"></text>
+<rect x="700" y="500" width="96" height="40" rx="4" fill="#ffffff" fill-opacity="1" stroke="#1d72b8" stroke-width="1.3"/>
+<text x="748" y="516" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="700" fill="#1d72b8">Branch</text>
+<text x="748" y="530" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="700" fill="#1d72b8">resolve</text>
+<polyline points="768,430 780,430 780,500" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="600,226 612,226 612,520 700,520" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="600,242 620,242 620,510 700,510" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="796,520 816,520 816,586" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<circle cx="838" cy="700" r="13" fill="#ffffff" stroke="#1d72b8" stroke-width="1.4"/>
+<text x="838" y="705" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="700" fill="#1d72b8">≠</text>
+<polyline points="838,626 838,687" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="584,780 838,780 838,713" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="588" y="774" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">PredNextE</text>
+<polyline points="851,700 856,700" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="760" y="716" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">MispredictE</text>
+<polyline points="584,560 596,560" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="588" y="554" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="1" text-anchor="start" font-weight="normal" fill="#0f172a"></text>
+<polyline points="584,600 856,600" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="588" y="594" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">RdE</text>
+<text x="876" y="175" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">RegWriteM</text>
+<text x="876" y="191" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">ResultSrcM</text>
+<text x="876" y="207" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">MemWriteM</text>
+<polyline points="872,178 1114,178" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="872,194 1114,194" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="872,210 960,210 960,340" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<rect x="920" y="340" width="120" height="110" rx="2" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.4"/>
+<text x="980.0" y="399.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="700" fill="#0f172a"></text>
+<text x="980" y="420" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="700" fill="#0f172a">Data Memory</text>
+<text x="980" y="434" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="middle" font-weight="normal" fill="#475569">(L1 D-cache)</text>
+<text x="926" y="390" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" text-anchor="start" font-weight="normal" fill="#0f172a">A</text>
+<text x="926" y="430" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" text-anchor="start" font-weight="normal" fill="#0f172a">WD</text>
+<text x="1034" y="390" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" text-anchor="end" font-weight="normal" fill="#0f172a">RD</text>
+<text x="966" y="356" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">WE</text>
+<polyline points="872,396 920,396" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="874" y="390" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">ALUResultM</text>
+<circle cx="896" cy="396" r="2.6" fill="#0f172a"/>
+<polyline points="896,396 896,360 1114,360" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="872,490 906,490 906,430 920,430" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="874" y="506" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">WriteDataM</text>
+<polyline points="1040,396 1114,396" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="1050" y="390" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">ReadDataM</text>
+<rect x="920" y="520" width="120" height="60" rx="2" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.4"/>
+<text x="980.0" y="554.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="700" fill="#0f172a"></text>
+<text x="980" y="545" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10.5" text-anchor="middle" font-weight="700" fill="#0f172a">CSRs + trap</text>
+<text x="980" y="560" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="middle" font-weight="normal" fill="#475569">precise exceptions</text>
+<polyline points="896,396 896,550 920,550" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="1040,550 1114,550" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="1046" y="544" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">CSRDataM</text>
+<polyline points="872,600 1114,600" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="874" y="594" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">RdM</text>
+<polyline points="872,760 1114,760" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="874" y="754" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">PCPlus4M</text>
+<line x1="584" y1="760" x2="856" y2="760" stroke="#0f172a" stroke-width="1.4"/>
+<polyline points="872,626 888,626 888,120 4,120 4,452 26,452" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="898" y="640" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">PCNextM</text>
+<rect x="388.86" y="108.88" width="162.28" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="470" y="120" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#0f172a">PCNextM — the correct next PC</text>
+<polyline points="872,700 880,700 880,108 54,108 54,368" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<rect x="338.32" y="96.88" width="263.36" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="470" y="108" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#1d72b8">RedirectM — misprediction, trap, mret or FENCE.I</text>
+<text x="884" y="716" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">MispredictM</text>
+<text x="1134" y="175" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">RegWriteW</text>
+<text x="1134" y="191" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">ResultSrcW</text>
+<polyline points="1130,194 1196,194 1196,350" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<rect x="1186" y="350" width="20" height="104" rx="10.0" fill="#ffffff" fill-opacity="1" stroke="#0f172a" stroke-width="1.3"/>
+<text x="1196.0" y="366.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">00</text>
+<text x="1196.0" y="392.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">01</text>
+<text x="1196.0" y="418.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">10</text>
+<text x="1196.0" y="444.0" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="middle" font-weight="normal" fill="#0f172a">11</text>
+<polyline points="1130,360 1160,360 1160,363 1186,363" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="1132" y="354" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#0f172a">ALUResultW</text>
+<polyline points="1130,396 1186,389" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="1132" y="390" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#0f172a">ReadDataW</text>
+<polyline points="1130,760 1170,760 1170,415 1186,415" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="1132" y="754" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#0f172a">PCPlus4W</text>
+<polyline points="1130,550 1160,550 1160,441 1186,441" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="1132" y="544" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#0f172a">CSRDataW</text>
+<polyline points="1206,402 1236,402" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="1212" y="396" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="start" font-weight="700" fill="#0f172a">ResultW</text>
+<circle cx="1236" cy="402" r="2.6" fill="#0f172a"/>
+<polyline points="1236,402 1236,846 340,846 340,444 372,444" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="1130,600 1150,600 1150,862 356,862 356,414 372,414" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="1152" y="616" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">RdW</text>
+<polyline points="1130,178 1250,178 1250,140 436,140 436,330" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<rect x="716.1" y="128.88" width="87.80000000000001" height="16.16" rx="3" fill="#ffffff" fill-opacity="0.92"/>
+<text x="760" y="140" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9.5" text-anchor="middle" font-weight="normal" fill="#1d72b8">RegWriteW → WE3</text>
+<circle cx="896" cy="396" r="2.6" fill="#0f172a"/>
+<polyline points="896,396 896,830 604,830 604,400 610,400" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<circle cx="604" cy="400" r="2.6" fill="#0f172a"/>
+<polyline points="604,400 604,470 610,470" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="700" y="826" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">ALUResultM  (forward, 10)</text>
+<circle cx="1236" cy="846" r="2.6" fill="#0f172a"/>
+<circle cx="598" cy="846" r="2.6" fill="#0f172a"/>
+<polyline points="598,846 598,381 610,381" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="598,451 610,451" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="700" y="842" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="9" text-anchor="start" font-weight="normal" fill="#0f172a">ResultW  (forward, 01)</text>
+<rect x="60" y="920" width="1240" height="44" rx="6" fill="#ffffff" fill-opacity="1" stroke="#1d72b8" stroke-width="1.6"/>
+<text x="680" y="948" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="700" fill="#1d72b8">Hazard Unit</text>
+<polyline points="78,920 78,452" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="82" y="900" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">StallF</text>
+<polyline points="284,920 284,820" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="280" y="900" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="end" font-weight="normal" fill="#1d72b8">StallD</text>
+<polyline points="292,920 292,820" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="296" y="900" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">FlushD</text>
+<polyline points="576,920 576,820" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="580" y="884" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">FlushE</text>
+<polyline points="864,920 864,820" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="868" y="900" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">FlushM</text>
+<polyline points="620,920 620,400" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="628,920 628,482" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="612" y="900" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="end" font-weight="normal" fill="#1d72b8">ForwardAE</text>
+<text x="632" y="900" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8.5" text-anchor="start" font-weight="normal" fill="#1d72b8">ForwardBE</text>
+<circle cx="330" cy="560" r="2.6" fill="#0f172a"/>
+<circle cx="338" cy="580" r="2.6" fill="#0f172a"/>
+<circle cx="720" cy="600" r="2.6" fill="#0f172a"/>
+<circle cx="980" cy="600" r="2.6" fill="#0f172a"/>
+<polyline points="330,560 330,920" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="344,580 344,920" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<circle cx="344" cy="580" r="2.6" fill="#0f172a"/>
+<polyline points="724,600 724,920" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<circle cx="724" cy="600" r="2.6" fill="#0f172a"/>
+<polyline points="984,600 984,920" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<circle cx="984" cy="600" r="2.6" fill="#0f172a"/>
+<polyline points="1150,862 1150,920" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="miter"/>
+<polyline points="886,700 886,920" fill="none" stroke="#1d72b8" stroke-width="1.4" stroke-linejoin="miter"/>
+<text x="334" y="912" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="start" font-weight="normal" fill="#475569">Rs1D Rs2D</text>
+<text x="728" y="912" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="start" font-weight="normal" fill="#475569">RdE</text>
+<text x="988" y="912" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="start" font-weight="normal" fill="#475569">RdM</text>
+<text x="1154" y="912" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="8" text-anchor="start" font-weight="normal" fill="#475569">RdW</text>
+<text x="30" y="994" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#475569">Additions to the textbook processor: a branch predictor in Fetch (BTB + 2-bit bimodal counters) picks PCF'; every instruction carries PredNext; Execute compares the real next PC with it;</text>
+<text x="30" y="1012" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#475569">a misprediction, trap, mret or FENCE.I redirects from Memory, flushing D, E and M. CSRs are read in Memory, so ResultW has a fourth source. Load-use and CSR-use stalls come from the Hazard Unit.</text>
+<text x="30" y="1030" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#475569">Simplified for clarity: the 4-entry fetch buffer is drawn as the IF/ID register, and the data cache's early address, the WB→ID bypass, the address adder and predictor training are not shown (see pipeline.svg).</text>
 </svg>

@@ -158,13 +158,15 @@ Checked in this priority order, all precise:
 
 ## 4. The pipeline, stage by stage
 
-The figure below draws the pipeline in the conventional textbook notation (Patterson &
-Hennessy, *Computer Organization and Design*): black lines are the datapath, blue lines are
-control, multiplexers are "Mux" pills, adders and the ALU are trapezoids, and each pipeline
-register carries the WB / M / EX control fields its later stages need.
+The figure below draws the pipeline the way textbooks draw a pipelined processor — it follows
+Harris & Harris, *Digital Design and Computer Architecture: RISC-V Edition*, Figure 7.61:
+thin clocked pipeline registers, signal names suffixed by stage (`PCF`, `InstrD`, `SrcAE`,
+`ALUResultM`, `ResultW`), the register file with its `A1/A2/A3/WD3` ports, instruction bit
+fields on the wires, the Control Unit on top with its signals passing through each register,
+and the Hazard Unit along the bottom driving the stall, flush and forwarding controls.
 
 <p align="center">
-  <img src="docs/img/pipeline_datapath.svg" alt="Pipelined datapath and control in textbook notation, with branch prediction in IF" width="100%">
+  <img src="docs/img/pipeline_datapath.svg" alt="Pipelined processor in the style of Harris and Harris Figure 7.61, with branch prediction and full hazard handling" width="100%">
 </p>
 
 The second figure is the same pipeline at the level of this implementation — every forwarding

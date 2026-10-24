@@ -645,6 +645,365 @@ def conventional():
     s.save("pipeline_datapath.svg")
 
 
+
+# ===========================================================================
+# 2c. Pipelined processor in the style of Harris & Harris, Fig. 7.61
+# ===========================================================================
+def harris():
+    """The pipeline drawn the way textbooks draw a pipelined processor
+    (Harris & Harris, DDCA RISC-V, Figure 7.61): thin clocked pipeline
+    registers, stage-suffixed signal names (F, D, E, M, W), the register file
+    with its A1/A2/A3/WD3 ports, instruction bit fields on the wires, the
+    control unit on top with its signals travelling through the registers,
+    and the hazard unit along the bottom."""
+    W, H = 1330, 1060
+    s = Svg(W, H, "Pipelined processor with branch prediction and full hazard handling")
+    K = INK
+    B = "#1d72b8"          # control, as in the book
+
+    def wire(pts, c=K, w=1.4):
+        p_ = " ".join(f"{x},{y}" for x, y in pts)
+        s.raw(f'<polyline points="{p_}" fill="none" stroke="{c}" stroke-width="{w}" '
+              f'stroke-linejoin="miter"/>')
+
+    def dot(x, y, c=K):
+        s.raw(f'<circle cx="{x}" cy="{y}" r="2.6" fill="{c}"/>')
+
+    def t(x, y, txt, c=K, size=10, anchor="start", weight="normal"):
+        s.text(x, y, txt, size=size, anchor=anchor, fill=c, weight=weight)
+
+    def block(x, y, w, h, title):
+        s.rect(x, y, w, h, "#ffffff", K, rx=2, sw=1.4)
+        s.text(x + w / 2, y + h / 2 + 4, title, size=10.5, weight="700")
+
+    def mux(x, y, h, labels, w=20):
+        s.rect(x, y, w, h, "#ffffff", K, rx=w / 2, sw=1.3)
+        n = len(labels)
+        for i, lb in enumerate(labels):
+            s.text(x + w / 2, y + (i + 0.5) * h / n + 3, lb, size=8)
+
+    def adder(x, y, w=40, h=64):
+        s.raw(f'<polygon points="{x},{y} {x + w},{y + h * 0.3} {x + w},{y + h * 0.7} '
+              f'{x},{y + h} {x},{y + h * 0.62} {x + w * 0.25},{y + h / 2} {x},{y + h * 0.38}" '
+              f'fill="#ffffff" stroke="{K}" stroke-width="1.4"/>')
+        s.text(x + w * 0.62, y + h / 2 + 5, "+", size=14, weight="700")
+
+    REG_TOP, REG_BOT = 150, 820
+
+    def preg(x, en=None, clr=None, name=None):
+        s.rect(x, REG_TOP, 16, REG_BOT - REG_TOP, "#ffffff", K, rx=1, sw=1.5)
+        s.raw(f'<polygon points="{x + 3},{REG_TOP} {x + 13},{REG_TOP} {x + 8},{REG_TOP + 9}" '
+              f'fill="none" stroke="{K}" stroke-width="1.2"/>')
+        t(x + 8, REG_TOP - 6, "CLK", size=9, anchor="middle")
+        yy = REG_BOT - 34
+        if en:
+            t(x + 8, yy, "EN", size=8, anchor="middle")
+            yy += 14
+        if clr:
+            t(x + 8, yy, "CLR", size=8, anchor="middle")
+        if name:
+            t(x + 8, REG_BOT + 14, name, size=9.5, anchor="middle", weight="700", c=MUTED)
+
+    # ---- title and stage names ----
+    s.text(30, 36, "Pipelined RV32I processor with branch prediction and full hazard handling",
+           size=19, anchor="start", weight="700")
+    s.text(30, 58, "Drawn in the convention of Harris & Harris, Digital Design and Computer "
+           "Architecture: RISC-V Edition, Figure 7.61. Black = datapath, blue = control. "
+           "Signal suffix = stage (F D E M W).", size=12, anchor="start", fill=MUTED)
+    for nm, x0, x1 in [("Fetch", 20, 296), ("Decode", 296, 584), ("Execute", 584, 872),
+                       ("Memory", 872, 1130), ("Writeback", 1130, 1300)]:
+        s.text((x0 + x1) / 2, 88, nm, size=13, weight="700",
+               fill=STAGE[{"Fetch": "IF", "Decode": "ID", "Execute": "EX", "Memory": "MEM",
+                           "Writeback": "WB"}[nm]][1])
+
+    # ---- pipeline registers ----
+    preg(280, en=True, clr=True, name="IF/ID")
+    preg(568, clr=True, name="ID/EX")
+    preg(856, clr=True, name="EX/MEM")
+    preg(1114, name="MEM/WB")
+
+    # ================= FETCH =================
+    mux(26, 368, 96, ["00", "01", "10"])                       # PC source
+    s.rect(70, 380, 16, 72, "#ffffff", K, rx=1, sw=1.5)          # PC register
+    s.raw(f'<polygon points="73,380 83,380 78,389" fill="none" stroke="{K}" stroke-width="1.2"/>')
+    t(78, 374, "CLK", size=9, anchor="middle")
+    t(78, 446, "EN", size=8, anchor="middle")
+    wire([(46, 416), (70, 416)]); t(48, 410, "PCF'", size=9)
+    block(116, 370, 112, 96, "")
+    s.text(172, 430, "Instruction", size=10.5, weight="700")
+    s.text(172, 444, "Memory", size=10.5, weight="700")
+    t(122, 400, "A", size=10); t(222, 400, "RD", size=10, anchor="end")
+    t(172, 456, "(L1 I-cache)", size=8.5, anchor="middle", c=MUTED)
+    wire([(86, 396), (116, 396)]); t(90, 390, "PCF", size=9.5)
+    wire([(228, 396), (280, 396)]); t(244, 390, "InstrF", size=9)
+    # +4 adder
+    dot(100, 396)
+    wire([(100, 396), (100, 548), (150, 548)])
+    adder(150, 532)
+    t(132, 590, "4", size=11, weight="700")
+    wire([(140, 586), (150, 586)])
+    wire([(190, 564), (264, 564), (264, 600), (280, 600)]); t(196, 558, "PCPlus4F", size=9)
+    dot(264, 564)
+    wire([(264, 564), (264, 520), (12, 520), (12, 380), (26, 380)])
+    # PCF to IF/ID
+    wire([(100, 548), (100, 640)])
+    dot(100, 548)
+    wire([(100, 640), (280, 640)]); t(206, 634, "PCF", size=9)
+    # branch predictor
+    block(116, 680, 128, 80, "")
+    s.text(180, 708, "Branch Predictor", size=10.5, weight="700")
+    s.text(180, 724, "BTB (64) + BHT (256)", size=9, fill=MUTED)
+    t(122, 744, "A", size=10)
+    dot(100, 640)
+    wire([(100, 640), (100, 744), (116, 744)])
+    t(238, 744, "Target", size=9, anchor="end")
+    wire([(244, 744), (262, 744), (262, 790), (8, 790), (8, 416), (26, 416)])
+    t(150, 784, "PredTargetF", size=9)
+    t(238, 700, "Taken", size=9, anchor="end", c=B)
+    wire([(244, 696), (252, 696), (252, 352), (40, 352), (40, 368)], B)
+    t(160, 346, "PredTakenF", size=9, c=B)
+    # predicted next PC travels with the instruction
+    wire([(270, 664), (280, 664)]); t(200, 676, "PredNextF", size=9)
+    s.raw(f'<line x1="246" y1="664" x2="270" y2="664" stroke="{K}" stroke-width="1.4"/>')
+    t(212, 660, "", size=1)
+
+    # ================= DECODE =================
+    wire([(296, 396), (320, 396)]); t(298, 390, "InstrD", size=9.5)
+    wire([(320, 210), (320, 720)])                              # instruction trunk
+    # control unit
+    block(372, 170, 104, 132, "")
+    s.text(424, 186, "Control", size=10.5, weight="700", fill=B)
+    s.text(424, 200, "Unit", size=10.5, weight="700", fill=B)
+    s.rect(372, 170, 104, 132, "none", B, rx=2, sw=1.4)
+    for yy, f, nm in [(226, "6:0", "op"), (250, "14:12", "funct3"), (274, "30", "funct7\u2085")]:
+        dot(320, yy)
+        wire([(320, yy), (372, yy)])
+        t(324, yy - 4, f, size=8)
+        t(378, yy + 4, nm, size=9.5)
+    ctrl = ["RegWriteD", "ResultSrcD", "MemWriteD", "JumpD", "BranchD", "ALUControlD",
+            "ALUSrcD"]
+    for i, nm in enumerate(ctrl):
+        yy = 178 + i * 16
+        wire([(476, yy), (568, yy)], B)
+        t(482, yy - 3, nm, size=8.5, c=B)
+    # ImmSrc to Extend
+    t(482, 294, "ImmSrcD", size=8.5, c=B)
+    wire([(476, 298), (540, 298), (540, 668)], B)
+    # register file
+    block(372, 330, 128, 132, "")
+    s.text(450, 436, "Register", size=10.5, weight="700")
+    s.text(450, 450, "File", size=10.5, weight="700")
+    for yy, port, f in [(350, "A1", "19:15"), (380, "A2", "24:20")]:
+        dot(320, yy)
+        wire([(320, yy), (372, yy)])
+        t(324, yy - 4, f, size=8)
+        t(378, yy + 4, port, size=9.5)
+    t(378, 414, "A3", size=9.5)
+    t(378, 444, "WD3", size=9.5)
+    t(436, 344, "WE3", size=9)
+    t(494, 354, "RD1", size=9.5, anchor="end")
+    t(494, 394, "RD2", size=9.5, anchor="end")
+    wire([(500, 350), (568, 350)])
+    wire([(500, 390), (568, 390)])
+    # register sources for the hazard unit
+    for yy, f, nm in [(560, "19:15", "Rs1D"), (580, "24:20", "Rs2D"), (600, "11:7", "RdD")]:
+        dot(320, yy)
+        wire([(320, yy), (568, yy)])
+        t(324, yy - 4, f, size=8)
+        t(500, yy - 4, nm, size=9)
+    # extend
+    s.raw(f'<polygon points="372,700 500,686 500,724 372,724" fill="#ffffff" stroke="{K}" '
+          f'stroke-width="1.4"/>')
+    s.text(440, 714, "Extend", size=10.5, weight="700")
+    dot(320, 712)
+    wire([(320, 712), (372, 712)])
+    t(324, 708, "31:7", size=8)
+    wire([(500, 706), (568, 706)]); t(506, 700, "ImmExtD", size=9)
+    # PC, PC+4, predicted next
+    wire([(296, 640), (568, 640)]); t(500, 634, "PCD", size=9)
+    wire([(296, 600), (306, 600), (306, 760), (568, 760)]); t(500, 754, "PCPlus4D", size=9)
+    wire([(296, 664), (310, 664), (310, 780), (568, 780)]); t(500, 774, "PredNextD", size=9)
+
+    # ================= EXECUTE =================
+    for i, nm in enumerate(ctrl):
+        yy = 178 + i * 16
+        en = nm[:-1] + "E"
+        wire([(584, yy), (600, yy)], B)
+        t(588, yy - 3, en, size=8.5, c=B)
+    # control continuing to MEM
+    for yy in (178, 194, 210):
+        wire([(600, yy), (856, yy)], B)
+    # forwarding muxes
+    wire([(584, 350), (610, 350)]); t(585, 344, "RD1E", size=8)
+    wire([(584, 390), (600, 390), (600, 432), (610, 432)]); t(585, 384, "RD2E", size=8)
+    mux(610, 330, 70, ["00", "01", "10"])
+    mux(610, 412, 70, ["00", "01", "10"])
+    wire([(630, 365), (690, 365)]); t(640, 359, "SrcAE", size=9)
+    wire([(630, 447), (650, 447)])
+    dot(650, 447)
+    wire([(650, 447), (668, 447)])
+    t(632, 462, "WriteDataE", size=8.5)
+    mux(668, 436, 46, ["0", "1"])
+    wire([(584, 706), (656, 706), (656, 470), (668, 470)])
+    t(588, 700, "ImmExtE", size=9)
+    wire([(688, 459), (700, 459), (700, 420), (712, 420)]); t(690, 476, "SrcBE", size=9)
+    # ALU
+    s.raw(f'<polygon points="712,330 768,354 768,438 712,462 712,410 726,396 712,382" '
+          f'fill="#ffffff" stroke="{K}" stroke-width="1.6"/>')
+    s.text(748, 400, "ALU", size=12, weight="700")
+    wire([(690, 365), (700, 365), (700, 350), (712, 350)])
+    wire([(768, 396), (856, 396)]); t(782, 390, "ALUResultE", size=9)
+    # ALU control & ALUSrc
+    wire([(600, 274), (740, 274), (740, 340)], B)
+    wire([(600, 290), (678, 290), (678, 436)], B)
+    # write data on to MEM
+    wire([(650, 447), (650, 490), (856, 490)]); t(782, 484, "WriteDataE", size=9)
+    # branch target adder
+    wire([(584, 640), (632, 640), (632, 580), (752, 580)]); t(588, 634, "PCE", size=9)
+    dot(632, 640)
+    wire([(656, 706), (656, 620), (752, 620)])
+    dot(656, 706)
+    adder(752, 566, w=40, h=68)
+    wire([(792, 600), (806, 600)]); t(758, 562, "PCTargetE", size=8.5)
+    # next PC select and misprediction check
+    wire([(584, 760), (700, 760), (700, 650), (806, 650)]); t(588, 754, "PCPlus4E", size=9)
+    mux(806, 586, 80, ["1", "0"])
+    t(808, 580, "TakenE", size=8.5, c=B)
+    wire([(826, 626), (838, 626)])
+    dot(838, 626)
+    wire([(838, 626), (856, 626)]); t(830, 620, "", size=1)
+    # branch decision (blue control logic)
+    s.rect(700, 500, 96, 40, "#ffffff", B, rx=4, sw=1.3)
+    s.text(748, 516, "Branch", size=9.5, weight="700", fill=B)
+    s.text(748, 530, "resolve", size=9.5, weight="700", fill=B)
+    wire([(768, 430), (780, 430), (780, 500)], B)                  # flags from ALU
+    wire([(600, 226), (612, 226), (612, 520), (700, 520)], B)      # JumpE
+    wire([(600, 242), (620, 242), (620, 510), (700, 510)], B)      # BranchE
+    wire([(796, 520), (816, 520), (816, 586)], B)                  # TakenE
+    # mismatch: PCNextE != PredNextE
+    s.raw(f'<circle cx="838" cy="700" r="13" fill="#ffffff" stroke="{B}" stroke-width="1.4"/>')
+    s.text(838, 705, "\u2260", size=14, weight="700", fill=B)
+    wire([(838, 626), (838, 687)])
+    wire([(584, 780), (838, 780), (838, 713)])
+    t(588, 774, "PredNextE", size=9)
+    wire([(851, 700), (856, 700)], B)
+    t(760, 716, "MispredictE", size=8.5, c=B)
+    # register numbers on to MEM / hazard
+    wire([(584, 560), (596, 560)]); t(588, 554, "", size=1)
+    wire([(584, 600), (856, 600)]); t(588, 594, "RdE", size=9)
+
+    # ================= MEMORY =================
+    for yy, nm in [(178, "RegWriteM"), (194, "ResultSrcM"), (210, "MemWriteM")]:
+        t(876, yy - 3, nm, size=8.5, c=B)
+    wire([(872, 178), (1114, 178)], B)
+    wire([(872, 194), (1114, 194)], B)
+    wire([(872, 210), (960, 210), (960, 340)], B)
+    block(920, 340, 120, 110, "")
+    s.text(980, 420, "Data Memory", size=10.5, weight="700")
+    s.text(980, 434, "(L1 D-cache)", size=8.5, fill=MUTED)
+    t(926, 390, "A", size=10); t(926, 430, "WD", size=10); t(1034, 390, "RD", size=10,
+                                                              anchor="end")
+    t(966, 356, "WE", size=9)
+    wire([(872, 396), (920, 396)]); t(874, 390, "ALUResultM", size=9)
+    dot(896, 396)
+    wire([(896, 396), (896, 360), (1114, 360)])
+    wire([(872, 490), (906, 490), (906, 430), (920, 430)]); t(874, 506, "WriteDataM", size=9)
+    wire([(1040, 396), (1114, 396)]); t(1050, 390, "ReadDataM", size=9)
+    # CSR / trap unit
+    block(920, 520, 120, 60, "")
+    s.text(980, 545, "CSRs + trap", size=10.5, weight="700")
+    s.text(980, 560, "precise exceptions", size=8.5, fill=MUTED)
+    wire([(896, 396), (896, 550), (920, 550)])
+    wire([(1040, 550), (1114, 550)]); t(1046, 544, "CSRDataM", size=9)
+    # rd, PC+4, next PC, misprediction
+    wire([(872, 600), (1114, 600)]); t(874, 594, "RdM", size=9)
+    wire([(872, 760), (1114, 760)]); t(874, 754, "PCPlus4M", size=9)
+    s.raw(f'<line x1="584" y1="760" x2="856" y2="760" stroke="{K}" stroke-width="1.4"/>')
+    wire([(872, 626), (888, 626), (888, 120), (4, 120), (4, 452), (26, 452)])
+    t(898, 640, "PCNextM", size=9)
+    s.label(470, 120, "PCNextM — the correct next PC", size=9.5, color=K, mono=False)
+    wire([(872, 700), (880, 700), (880, 108), (54, 108), (54, 368)], B)
+    s.label(470, 108, "RedirectM — misprediction, trap, mret or FENCE.I", size=9.5, color=B,
+            mono=False)
+    t(884, 716, "MispredictM", size=8.5, c=B)
+    # predictor update
+
+    # ================= WRITEBACK =================
+    t(1134, 175, "RegWriteW", size=8.5, c=B)
+    t(1134, 191, "ResultSrcW", size=8.5, c=B)
+    wire([(1130, 194), (1196, 194), (1196, 350)], B)
+    mux(1186, 350, 104, ["00", "01", "10", "11"])
+    wire([(1130, 360), (1160, 360), (1160, 363), (1186, 363)]); t(1132, 354, "ALUResultW", size=8.5)
+    wire([(1130, 396), (1186, 389)]); t(1132, 390, "ReadDataW", size=8.5)
+    wire([(1130, 760), (1170, 760), (1170, 415), (1186, 415)]); t(1132, 754, "PCPlus4W", size=8.5)
+    wire([(1130, 550), (1160, 550), (1160, 441), (1186, 441)]); t(1132, 544, "CSRDataW", size=8.5)
+    wire([(1206, 402), (1236, 402)])
+    t(1212, 396, "ResultW", size=9.5, weight="700")
+    dot(1236, 402)
+    wire([(1236, 402), (1236, 846), (340, 846), (340, 444), (372, 444)])
+    wire([(1130, 600), (1150, 600), (1150, 862), (356, 862), (356, 414), (372, 414)])
+    t(1152, 616, "RdW", size=9)
+    wire([(1130, 178), (1250, 178), (1250, 140), (436, 140), (436, 330)], B)
+    s.label(760, 140, "RegWriteW → WE3", size=9.5, color=B, mono=False)
+    # forwarding into the EX muxes
+    dot(896, 396)
+    wire([(896, 396), (896, 830), (604, 830), (604, 400), (610, 400)])
+    dot(604, 400)
+    wire([(604, 400), (604, 470), (610, 470)])
+    t(700, 826, "ALUResultM  (forward, 10)", size=9)
+    dot(1236, 846)
+    dot(598, 846)
+    wire([(598, 846), (598, 381), (610, 381)])
+    wire([(598, 451), (610, 451)])
+    t(700, 842, "ResultW  (forward, 01)", size=9)
+
+    # ================= HAZARD UNIT =================
+    s.rect(60, 920, 1240, 44, "#ffffff", B, rx=6, sw=1.6)
+    s.text(680, 948, "Hazard Unit", size=12, weight="700", fill=B)
+    for x, ty, nm, side in [(78, 452, "StallF", 1), (284, 820, "StallD", -1),
+                            (292, 820, "FlushD", 1), (576, 820, "FlushE", 1),
+                            (864, 820, "FlushM", 1)]:
+        wire([(x, 920), (x, ty)], B)
+        s.text(x + 4 * side, 884 if nm == "FlushE" else 900, nm, size=8.5, fill=B,
+               anchor="start" if side > 0 else "end")
+    for x, ty, nm in [(620, 400, "ForwardAE"), (628, 482, "ForwardBE")]:
+        wire([(x, 920), (x, ty)], B)
+    s.text(612, 900, "ForwardAE", size=8.5, fill=B, anchor="end")
+    s.text(632, 900, "ForwardBE", size=8.5, fill=B, anchor="start")
+    ins = [(330, "Rs1D", 560), (338, "Rs2D", 580), (720, "RdE", 600), (980, "RdM", 600),
+           (1150, "RdW", 862)]
+    for x, nm, yy in ins:
+        dot(x, yy) if x not in (1150,) else None
+    for x in (400, 412, 724, 990):
+        pass
+    wire([(330, 560), (330, 920)])
+    wire([(344, 580), (344, 920)])
+    dot(344, 580)
+    wire([(724, 600), (724, 920)])
+    dot(724, 600)
+    wire([(984, 600), (984, 920)])
+    dot(984, 600)
+    wire([(1150, 862), (1150, 920)])
+    wire([(886, 700), (886, 920)], B)
+    s.text(334, 912, "Rs1D Rs2D", size=8, fill=MUTED, anchor="start")
+    s.text(728, 912, "RdE", size=8, fill=MUTED, anchor="start")
+    s.text(988, 912, "RdM", size=8, fill=MUTED, anchor="start")
+    s.text(1154, 912, "RdW", size=8, fill=MUTED, anchor="start")
+
+    # ---- notes ----
+    s.text(30, 994, "Additions to the textbook processor: a branch predictor in Fetch (BTB + "
+           "2-bit bimodal counters) picks PCF'; every instruction carries PredNext; Execute "
+           "compares the real next PC with it;", size=11, anchor="start", fill=MUTED)
+    s.text(30, 1012, "a misprediction, trap, mret or FENCE.I redirects from Memory, flushing "
+           "D, E and M. CSRs are read in Memory, so ResultW has a fourth source. Load-use and "
+           "CSR-use stalls come from the Hazard Unit.", size=11, anchor="start", fill=MUTED)
+    s.text(30, 1030, "Simplified for clarity: the 4-entry fetch buffer is drawn as the IF/ID "
+           "register, and the data cache's early address, the WB→ID bypass, the address adder "
+           "and predictor training are not shown (see pipeline.svg).", size=11,
+           anchor="start", fill=MUTED)
+    s.save("pipeline_datapath.svg")
+
+
 # ===========================================================================
 # 3. Fetch unit
 # ===========================================================================
@@ -1040,7 +1399,7 @@ def charts():
 if __name__ == "__main__":
     system()
     pipeline()
-    conventional()
+    harris()
     fetch_unit()
     cache()
     hazards()
